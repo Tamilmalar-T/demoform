@@ -17,7 +17,7 @@ uploads/
 
 # Build outputs
 dist/
-Frontend/dist/
+frontend/dist/
 Backend/dist/
 build/
 
