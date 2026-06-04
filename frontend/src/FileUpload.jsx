@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import './FileUpload.css';
 import { API_URL } from './config';
@@ -14,9 +14,132 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
     recordType: '',
   });
 
+  const [chatInputs, setChatInputs] = useState({});
+  const [expandedChatId, setExpandedChatId] = useState(null);
+
+  // Automatically mark doctor messages in expanded chat as read by admin
+  useEffect(() => {
+    if (expandedChatId && setRequests) {
+      const activeReq = requests.find(r => r.id === expandedChatId);
+      if (activeReq) {
+        const hasUnread = (activeReq.messages || []).some(
+          m => m.senderType === 'doctor' && m.readByAdmin !== true
+        );
+        if (hasUnread) {
+          setRequests(prev =>
+            prev.map(r => {
+              if (r.id === expandedChatId) {
+                return {
+                  ...r,
+                  messages: (r.messages || []).map(m =>
+                    m.senderType === 'doctor'
+                      ? { ...m, readByAdmin: true }
+                      : m
+                  )
+                };
+              }
+              return r;
+            })
+          );
+        }
+      }
+    }
+  }, [expandedChatId, requests, setRequests]);
+
+  const [uploadingChats, setUploadingChats] = useState({});
+
+  const handleChatFileUpload = async (reqId, file) => {
+    if (!file) return;
+    setUploadingChats(prev => ({ ...prev, [reqId]: true }));
+    try {
+      const data = new FormData();
+      data.append('file', file);
+
+      const response = await axios.post(`${API_URL}/api/chat/upload`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data.success) {
+        const { fileUrl, fileName, fileSize } = response.data;
+        
+        setRequests(prev => prev.map(r => {
+          if (r.id === reqId) {
+            const initialMsgs = r.messages || [
+              {
+                id: 'msg_init',
+                sender: r.doctorName || 'Doctor',
+                senderType: 'doctor',
+                text: `Hi Admin, I need the ${r.recordType} record for patient ${r.name}. Reason: ${r.reason}`,
+                timestamp: r.timestamp,
+                readByAdmin: false
+              }
+            ];
+            return {
+              ...r,
+              messages: [
+                ...initialMsgs,
+                {
+                  id: 'msg_file_' + Date.now(),
+                  sender: 'Admin',
+                  senderType: 'admin',
+                  text: `📁 Attached File: ${fileName}`,
+                  fileUrl,
+                  fileName,
+                  fileSize,
+                  timestamp: new Date().toISOString(),
+                  readByDoctor: false
+                }
+              ]
+            };
+          }
+          return r;
+        }));
+      }
+    } catch (err) {
+      console.error('Chat file upload failed:', err);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setUploadingChats(prev => ({ ...prev, [reqId]: false }));
+    }
+  };
+
   const handleRequestDecision = (reqId, decision) => {
     if (setRequests) {
-      setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: decision, notified: false } : r));
+      setRequests(prev => prev.map(r => {
+        if (r.id === reqId) {
+          const decisionText = decision === 'accepted' 
+            ? `✓ Request APPROVED. Preparing records.` 
+            : `✕ Request DECLINED. Please check requirements.`;
+          const initialMsgs = r.messages || [
+            {
+              id: 'msg_init',
+              sender: r.doctorName || 'Doctor',
+              senderType: 'doctor',
+              text: `Hi Admin, I need the ${r.recordType} record for patient ${r.name}. Reason: ${r.reason}`,
+              timestamp: r.timestamp,
+              readByAdmin: false
+            }
+          ];
+          return {
+            ...r,
+            status: decision,
+            notified: false,
+            messages: [
+              ...initialMsgs,
+              {
+                id: 'msg_decision_' + Date.now(),
+                sender: 'System Admin',
+                senderType: 'admin',
+                text: decisionText,
+                timestamp: new Date().toISOString(),
+                isSystem: true,
+                readByDoctor: false
+              }
+            ]
+          };
+        }
+        return r;
+      }));
     }
   };
 
@@ -171,8 +294,15 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
   };
 
   return (
-    <div >
-      <div className="form-card-header" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+    <div className="request-grid-layout" style={{
+      display: 'grid',
+      gridTemplateColumns: showNotifications ? '1.2fr 1fr' : '1fr',
+      gap: showNotifications ? '2rem' : '0',
+      alignItems: 'start',
+      transition: 'all 0.3s ease'
+    }}>
+      <div className="request-form-card" style={{ padding: '2rem' }}>
+        <div className="form-card-header" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div className="header-info" style={{ flex: '1 1 300px' }}>
           <h2>Patient Record Intake Form</h2>
           <p>Please enter details accurately to sync with the digital diagnostic records.</p>
@@ -230,130 +360,6 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
             )}
           </button>
 
-          {showNotifications && (
-            <div className="notifications-dropdown-popover" style={{
-              position: 'absolute',
-              top: '110%',
-              right: '0',
-              background: 'white',
-              boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(15, 23, 42, 0.05)',
-              borderRadius: '18px',
-              width: '320px',
-              maxHeight: '420px',
-              overflowY: 'auto',
-              zIndex: 1000,
-              padding: '1.25rem',
-              animation: 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.6rem' }}>
-                <span style={{ fontWeight: '800', fontSize: '0.95rem', color: '#0f172a', fontFamily: 'var(--font-display)' }}>Pending Patient Requests</span>
-                <span style={{ fontSize: '0.75rem', background: 'var(--primary-glow, rgba(79, 70, 229, 0.08))', color: 'var(--primary, #4f46e5)', padding: '3px 8px', borderRadius: '8px', fontWeight: '800' }}>
-                  {requests.filter(r => r.status === 'pending').length} New
-                </span>
-              </div>
-
-              {requests.filter(r => r.status === 'pending').length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" width="24" height="24">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                  </div>
-                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>No Requests Pending</p>
-                  <p style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Your queue is fully cleared.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                  {requests.filter(r => r.status === 'pending').map(req => (
-                    <div key={req.id} style={{
-                      background: '#f8fafc',
-                      padding: '12px',
-                      borderRadius: '14px',
-                      border: '1px solid #f1f5f9',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      transition: 'all 0.2s ease'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: '800', fontSize: '0.85rem', color: '#0f172a', fontFamily: 'var(--font-display)' }}>{req.name}</span>
-                        <span style={{
-                          fontSize: '8px',
-                          fontWeight: '800',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          background: req.priority === 'High' ? '#fee2e2' : req.priority === 'Medium' ? '#fffbeb' : '#eff6ff',
-                          color: req.priority === 'High' ? '#dc2626' : req.priority === 'Medium' ? '#d97706' : '#2563eb',
-                        }}>{req.priority}</span>
-                      </div>
-                      <div style={{ fontSize: '10px', color: '#6366f1', fontWeight: '700', marginTop: '-4px' }}>
-                        👤 Requested By: {req.doctorName ? (req.doctorName.startsWith('Dr') ? req.doctorName : 'Dr. ' + req.doctorName) : 'Unknown Doctor'} ({req.department || 'Clinical'})
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', gap: '6px', fontWeight: '500' }}>
-                        <span><strong>IP:</strong> {req.ipNo}</span>
-                        <span>•</span>
-                        <span>{req.recordType}</span>
-                      </div>
-                      <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569', background: 'white', padding: '6px 10px', borderRadius: '8px', border: '1px solid #f1f5f9', lineHieght: '1.4' }}>
-                        "{req.reason}"
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                        <button 
-                          type="button" 
-                          onClick={() => handleRequestDecision(req.id, 'accepted')}
-                          style={{
-                            flex: 1,
-                            background: '#10b981',
-                            color: 'white',
-                            border: 'none',
-                            padding: '8px 12px',
-                            borderRadius: '10px',
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                            boxShadow: '0 4px 10px rgba(16, 185, 129, 0.2)',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          ✓ Accept
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => handleRequestDecision(req.id, 'declined')}
-                          style={{
-                            flex: 1,
-                            background: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            padding: '8px 12px',
-                            borderRadius: '10px',
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                            boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          ✕ Decline
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="completeness-indicator" style={{ display: 'flex', alignItems: 'center' }}>
@@ -481,6 +487,318 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
         <div className="success-alert">
           {successMessage}
           {uploadedFileUrl && <a href={uploadedFileUrl} target="_blank" rel="noopener noreferrer">View File</a>}
+        </div>
+      )}
+      </div>
+
+      {/* Right Column: Doctor Record Requests Feed */}
+      {showNotifications && (
+        <div className="request-history-card" style={{ animation: 'fadeIn 0.3s ease' }}>
+          <div className="history-header">
+            <h3>Doctor Record Requests Feed</h3>
+            <span className="history-count-badge">{requests.length} Requests</span>
+          </div>
+
+          <div className="history-list-wrapper" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            {requests.length === 0 ? (
+              <div className="empty-history-state">
+                <div className="empty-icon-ring">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <p>No clinical requests received</p>
+                <span>Incoming doctor requests will appear here with live chat and action controls.</span>
+              </div>
+            ) : (
+              <div className="history-items-container">
+                {requests.map((req) => (
+                  <div key={req.id} className={`history-item-row ${req.status}`} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', width: '100%' }}>
+                      <div className="item-main-details">
+                        <div className="item-title-row">
+                          <span className="item-patient-name">{req.name}</span>
+                          <span className={`priority-pill ${req.priority.toLowerCase()}`}>
+                            {req.priority}
+                          </span>
+                        </div>
+                        <div className="item-meta-row">
+                          <span><strong>IP:</strong> {req.ipNo}</span>
+                          <span className="meta-divider">•</span>
+                          <span><strong>Type:</strong> {req.recordType}</span>
+                        </div>
+                        <div className="item-meta-row" style={{ marginTop: '4px', fontSize: '0.78rem', color: '#6366f1', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          <span>👤 <strong>Requested By:</strong> {req.doctorName ? (req.doctorName.startsWith('Dr') ? req.doctorName : 'Dr. ' + req.doctorName) : 'Unknown Doctor'} ({req.department || 'Clinical'})</span>
+                        </div>
+                        <p className="item-reason-preview">"{req.reason}"</p>
+                        <span className="item-time">
+                          {new Date(req.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}{' '}
+                          - {new Date(req.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      <div className="item-status-column" style={{ flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
+                        <div className={`status-badge-premium ${req.status}`}>
+                          {req.status === 'pending' && (
+                            <>
+                              <span className="pulsing-amber-dot"></span>
+                              Pending
+                            </>
+                          )}
+                          {req.status === 'accepted' && (
+                            <>
+                              <span className="check-icon-mini">✓</span>
+                              Approved
+                            </>
+                          )}
+                          {req.status === 'declined' && (
+                            <>
+                              <span className="cross-icon-mini">✕</span>
+                              Declined
+                            </>
+                          )}
+                        </div>
+
+                        {req.status === 'pending' && (
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRequestDecision(req.id, 'accepted')}
+                              style={{
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                padding: '5px 8px',
+                                borderRadius: '6px',
+                                fontSize: '10px',
+                                fontWeight: '700',
+                                cursor: 'pointer'
+                              }}
+                              title="Approve Request"
+                            >
+                              ✓ Accept
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRequestDecision(req.id, 'declined')}
+                              style={{
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                padding: '5px 8px',
+                                borderRadius: '6px',
+                                fontSize: '10px',
+                                fontWeight: '700',
+                                cursor: 'pointer'
+                              }}
+                              title="Decline Request"
+                            >
+                              ✕ Decline
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Collapsible Chat System */}
+                    <div style={{ marginTop: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedChatId(expandedChatId === req.id ? null : req.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#4f46e5',
+                          fontSize: '0.8rem',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: expandedChatId === req.id ? 'rgba(79, 70, 229, 0.08)' : 'transparent',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {(() => {
+                          const unreadCount = (req.messages || [
+                            { senderType: 'doctor', readByAdmin: false }
+                          ]).filter(m => m.senderType === 'doctor' && m.readByAdmin !== true).length;
+                          return `💬 Chat & Messages (${unreadCount})`;
+                        })()}
+                      </button>
+
+                      {expandedChatId === req.id && (
+                        <div style={{
+                          marginTop: '8px',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          padding: '10px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}>
+                          <div style={{
+                            maxHeight: '180px',
+                            overflowY: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
+                            padding: '6px',
+                            background: '#ffffff',
+                            borderRadius: '8px',
+                            border: '1px solid #f1f5f9'
+                          }}>
+                            {(req.messages || [
+                              {
+                                id: 'msg_init',
+                                sender: req.doctorName ? (req.doctorName.startsWith('Dr') ? req.doctorName : 'Dr. ' + req.doctorName) : 'Doctor',
+                                senderType: 'doctor',
+                                text: `Hi Admin, I need the ${req.recordType} record for patient ${req.name}. Reason: ${req.reason}`,
+                                timestamp: req.timestamp,
+                                readByAdmin: false
+                              }
+                            ]).map((msg) => {
+                              const isMe = msg.senderType === 'admin';
+                              return (
+                                <div key={msg.id} style={{
+                                  alignSelf: msg.isSystem ? 'center' : (isMe ? 'flex-end' : 'flex-start'),
+                                  maxWidth: '85%',
+                                  background: msg.isSystem ? '#e2e8f0' : (isMe ? '#4f46e5' : '#f1f5f9'),
+                                  color: msg.isSystem ? '#475569' : (isMe ? '#ffffff' : '#0f172a'),
+                                  padding: '6px 10px',
+                                  borderRadius: '12px',
+                                  borderTopRightRadius: !msg.isSystem && isMe ? '2px' : '10px',
+                                  borderTopLeftRadius: !msg.isSystem && !isMe ? '2px' : '10px',
+                                  fontSize: '0.78rem',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                  border: msg.isSystem ? '1px dashed #cbd5e1' : 'none'
+                                }}>
+                                  {!msg.isSystem && (
+                                    <span style={{ fontSize: '0.65rem', fontWeight: '800', opacity: 0.8 }}>
+                                      {msg.sender}
+                                    </span>
+                                  )}
+                                  {msg.fileUrl ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px', padding: '8px', background: isMe ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: '8px', border: '1px solid ' + (isMe ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)') }}>
+                                      <span style={{ wordBreak: 'break-all', fontWeight: '600' }}>📁 {msg.fileName || 'Attached File'}</span>
+                                      <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>{msg.fileSize}</span>
+                                      <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" style={{ alignSelf: 'flex-start', marginTop: '4px', padding: '4px 8px', background: isMe ? '#ffffff' : '#4f46e5', color: isMe ? '#4f46e5' : '#ffffff', border: 'none', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', textDecoration: 'none', display: 'inline-block' }}>
+                                        View Attachment
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</span>
+                                  )}
+                                  <span style={{ fontSize: '0.6rem', alignSelf: 'flex-end', opacity: 0.6, marginTop: '2px' }}>
+                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const text = chatInputs[req.id] || '';
+                            if (!text.trim()) return;
+
+                            setRequests(prev => prev.map(r => {
+                              if (r.id === req.id) {
+                                const initialMsgs = r.messages || [
+                                  {
+                                    id: 'msg_init',
+                                    sender: r.doctorName || 'Doctor',
+                                    senderType: 'doctor',
+                                    text: `Hi Admin, I need the ${r.recordType} record for patient ${r.name}. Reason: ${r.reason}`,
+                                    timestamp: r.timestamp,
+                                    readByAdmin: false
+                                  }
+                                ];
+                                return {
+                                  ...r,
+                                  messages: [
+                                    ...initialMsgs,
+                                    {
+                                      id: 'msg_' + Date.now(),
+                                      sender: 'Admin',
+                                      senderType: 'admin',
+                                      text: text.trim(),
+                                      timestamp: new Date().toISOString(),
+                                      readByDoctor: false
+                                    }
+                                  ]
+                                };
+                              }
+                              return r;
+                            }));
+                            
+                            setChatInputs(prev => ({ ...prev, [req.id]: '' }));
+                          }} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '6px', borderRadius: '8px', background: '#e2e8f0', color: '#475569', transition: 'all 0.2s', minWidth: '32px', height: '32px', boxSizing: 'border-box' }} title="Upload File">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                                <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                              </svg>
+                              <input
+                                type="file"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    handleChatFileUpload(req.id, e.target.files[0]);
+                                  }
+                                }}
+                                style={{ display: 'none' }}
+                                disabled={uploadingChats[req.id]}
+                              />
+                            </label>
+                            <input
+                              type="text"
+                              placeholder={uploadingChats[req.id] ? "Uploading attachment..." : "Type message..."}
+                              value={chatInputs[req.id] || ''}
+                              onChange={(e) => setChatInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
+                              disabled={uploadingChats[req.id]}
+                              style={{
+                                flex: 1,
+                                padding: '6px 10px',
+                                fontSize: '0.78rem',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '8px',
+                                outline: 'none'
+                              }}
+                            />
+                            <button
+                              type="submit"
+                              disabled={uploadingChats[req.id]}
+                              style={{
+                                background: '#4f46e5',
+                                color: 'white',
+                                border: 'none',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '0.78rem',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                opacity: uploadingChats[req.id] ? 0.7 : 1
+                              }}
+                            >
+                              {uploadingChats[req.id] ? '...' : 'Send'}
+                            </button>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -101,10 +101,10 @@ const SessionDetails = ({ currentSession, sessionHistory, activeDuration, onClos
             <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" width="24" height="24">
               <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Past Sessions History
+            Sessions History
           </h2>
           
-          {sessionHistory.length > 0 ? (
+          {(sessionHistory.length > 0 || currentSession) ? (
             <div className="session-details-table-wrapper">
               <table className="session-details-table">
                 <thead>
@@ -117,6 +117,37 @@ const SessionDetails = ({ currentSession, sessionHistory, activeDuration, onClos
                   </tr>
                 </thead>
                 <tbody>
+                  {currentSession && (
+                    <tr style={{ background: '#eff6ff', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                      <td style={{ fontWeight: '600', color: '#4f46e5', wordBreak: 'break-all' }}>
+                        {currentSession.email || localStorage.getItem('medflow_authEmail') || 'N/A'}
+                      </td>
+                      <td style={{ fontWeight: '600', color: '#8b5cf6', wordBreak: 'break-all' }}>
+                        {currentSession.loginId || 'N/A'}
+                      </td>
+                      <td>{formatDateTimeToDDMMYYYY(currentSession.loginTime)}</td>
+                      <td>
+                        <span style={{ 
+                          background: '#eff6ff', 
+                          color: '#1d4ed8', 
+                          padding: '4px 8px', 
+                          borderRadius: '12px', 
+                          fontSize: '12px', 
+                          fontWeight: '600',
+                          border: '1px solid #bfdbfe',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          <span style={{ width: '6px', height: '6px', background: '#3b82f6', borderRadius: '50%', display: 'inline-block', animation: 'pulse 2s infinite' }}></span>
+                          Active Now
+                        </span>
+                      </td>
+                      <td style={{ color: '#1d4ed8', fontWeight: '600', fontFamily: 'monospace', fontSize: '16px' }}>
+                        {activeDuration || '0h 0m 0s'}
+                      </td>
+                    </tr>
+                  )}
                   {sessionHistory.map((s, idx) => {
                     const loggedInEmail = s.email || (s.loginId && s.loginId.includes('@') ? s.loginId : 'tamilmalar520d@gmail.com');
                     const loggedOutUser = s.email ? s.loginId : (s.loginId && !s.loginId.includes('@') ? s.loginId : 'sadhana');
@@ -138,7 +169,7 @@ const SessionDetails = ({ currentSession, sessionHistory, activeDuration, onClos
               <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" width="48" height="48" style={{ marginBottom: '15px' }}>
                 <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <p style={{ fontSize: '16px', color: '#64748b', margin: 0 }}>No past session history available yet.</p>
+              <p style={{ fontSize: '16px', color: '#64748b', margin: 0 }}>No session history available yet.</p>
             </div>
           )}
         </section>

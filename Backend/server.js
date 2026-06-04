@@ -607,6 +607,56 @@ app.put("/api/patients/:id/files", upload.array("files", 10), async (req, res) =
 });
 
 
+// ================= CHAT FILE UPLOAD API =================
+app.post("/api/chat/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file uploaded" });
+    }
+
+    const PORT = process.env.PORT || 5000;
+    let fileUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
+
+    if (global.auth) {
+      try {
+        const drive = google.drive({ version: "v3", auth: global.auth });
+        const driveResponse = await drive.files.create({
+          requestBody: {
+            name: req.file.originalname,
+          },
+          media: {
+            mimeType: req.file.mimetype,
+            body: fs.createReadStream(req.file.path),
+          },
+          supportsAllDrives: true
+        });
+
+        await drive.permissions.create({
+          fileId: driveResponse.data.id,
+          requestBody: { role: "reader", type: "anyone" },
+          supportsAllDrives: true
+        });
+
+        fileUrl = `https://drive.google.com/uc?id=${driveResponse.data.id}`;
+        fs.unlinkSync(req.file.path);
+      } catch (driveErr) {
+        console.error("Google Drive upload failed for chat file, using local fallback:", driveErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      fileUrl,
+      fileName: req.file.originalname,
+      fileSize: (req.file.size / 1024 / 1024).toFixed(2) + " MB"
+    });
+  } catch (err) {
+    console.error("Chat file upload error:", err);
+    res.status(500).json({ success: false, message: "Upload failed" });
+  }
+});
+
+
 // ================= AUTH API =================
 const otpStore = new Map();
 

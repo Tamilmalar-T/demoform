@@ -51,6 +51,21 @@ function App() {
     localStorage.setItem('medflow_requests', JSON.stringify(requests));
   }, [requests]);
 
+  // Synchronize requests across browser tabs in real-time
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'medflow_requests') {
+        try {
+          setRequests(JSON.parse(e.newValue || '[]'));
+        } catch (err) {
+          console.error("Error parsing synchronized requests", err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const [currentSession, setCurrentSession] = useState(() => {
     const stored = localStorage.getItem('medflow_currentSession');
     return stored ? JSON.parse(stored) : null;
@@ -257,10 +272,15 @@ function App() {
 
 
   if (!isLoggedIn) {
-    return <Login onLoginSuccess={(email, session) => {
-      setIsLoggedIn(true);
-      setCurrentSession(session);
-    }} />;
+    return (
+      <Routes>
+        <Route path="/accounts" element={<CredentialsPage />} />
+        <Route path="/*" element={<Login onLoginSuccess={(email, session) => {
+          setIsLoggedIn(true);
+          setCurrentSession(session);
+        }} />} />
+      </Routes>
+    );
   }
 
   if (showSessionDetails) {
