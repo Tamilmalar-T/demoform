@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true,
+  },
   preview: {
     allowedHosts: ['.onrender.com', 'demoform-whbg.onrender.com']
   }
