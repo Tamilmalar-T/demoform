@@ -9,6 +9,6 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] })
   ],
   preview: {
-    allowedHosts: true
+    allowedHosts: ['.onrender.com', 'demoform-whbg.onrender.com']
   }
 })
