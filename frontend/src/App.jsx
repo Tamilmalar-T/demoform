@@ -9,6 +9,7 @@ import SessionDetails from './SessionDetails';
 import CredentialsPage from './CredentialsPage';
 import './App.css';
 import './Dept.jsx/Requestform.css';
+import { API_URL } from './config';
 
 function App() {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ function App() {
   useEffect(() => {
     const fetchRecords = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/patients');
+        const response = await fetch(`${API_URL}/api/patients`);
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         setRecords(data);
@@ -120,7 +121,7 @@ function App() {
   const deleteRecord = async (id) => {
     try {
       if (!isOffline && id && id.length === 24) { 
-         await fetch(`http://localhost:5000/api/patients/${id}`, { method: 'DELETE' });
+         await fetch(`${API_URL}/api/patients/${id}`, { method: 'DELETE' });
       }
       
       const deletedRecord = records.find(r => (r.id || r._id) === id);
@@ -153,7 +154,7 @@ function App() {
         const activeUser = currentSession ? currentSession.loginId : 'System';
         formData.append("updatedBy", activeUser);
         
-        const response = await fetch(`http://localhost:5000/api/patients/${id}/files`, {
+        const response = await fetch(`${API_URL}/api/patients/${id}/files`, {
           method: 'PUT',
           body: formData,
         });

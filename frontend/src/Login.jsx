@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from './config';
 
 const Login = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState(() => {
@@ -43,7 +44,7 @@ const Login = ({ onLoginSuccess }) => {
     setLoginError('');
     setIsAuthLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -66,7 +67,7 @@ const Login = ({ onLoginSuccess }) => {
     setLoginError('');
     setIsAuthLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
+      const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
@@ -158,7 +159,7 @@ const Login = ({ onLoginSuccess }) => {
     setLoginError('');
     setIsAuthLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

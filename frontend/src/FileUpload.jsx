@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import './FileUpload.css';
+import { API_URL } from './config';
 
 function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setRequests }) {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -145,7 +146,7 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
     data.append('createdBy', loggedInUser);
 
     try {
-      const response = await axios.post('http://localhost:5000/upload', data, {
+      const response = await axios.post(`${API_URL}/upload`, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 

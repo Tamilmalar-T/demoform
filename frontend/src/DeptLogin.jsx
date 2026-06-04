@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './DeptLogin.css';
+import { API_URL } from './config';
 
 const DeptLogin = ({ onLoginSuccess }) => {
   const [doctorName, setDoctorName] = useState('');
@@ -39,7 +40,7 @@ const DeptLogin = ({ onLoginSuccess }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/dept-login', {
+      const response = await fetch(`${API_URL}/api/auth/dept-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ doctorName, dept, password })
