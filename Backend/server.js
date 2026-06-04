@@ -16,7 +16,8 @@ dotenv.config();
 const app = express();
 
 // ================= DATABASE (MONGODB) =================
-mongoose.connect("mongodb://localhost:27017/mrddatabase")
+const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/mrddatabase";
+mongoose.connect(mongoURI)
   .then(() => console.log("MongoDB Connected Successfully"))
   .catch((err) => console.error("MongoDB Connection Error:", err));
 
