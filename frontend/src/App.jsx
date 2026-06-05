@@ -254,7 +254,7 @@ function App() {
         timeoutId = setTimeout(() => {
           alert("You have been logged out automatically due to 5 minutes of inactivity.");
           latestLogout.current(true);
-        }, 15 * 60 * 1000); // 5 minutes
+        }, 120 * 60 * 1000); // 5 minutes
       }
     };
 
