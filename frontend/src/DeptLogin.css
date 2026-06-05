@@ -304,3 +304,20 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 480px) {
+  .dept-login-card {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+  .dept-login-header {
+    margin-bottom: 20px;
+  }
+  .dept-login-form {
+    gap: 16px;
+  }
+  .input-with-icon input,
+  .input-with-icon select {
+    padding: 12px 14px 12px 42px;
+  }
+}

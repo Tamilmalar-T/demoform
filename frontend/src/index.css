@@ -169,7 +169,7 @@ a {
 
 .session-details-header {
   background: white;
-  padding: 1.25rem 2rem;
+  padding: 0.75rem 1.25rem;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
@@ -181,7 +181,7 @@ a {
 }
 
 .session-details-main {
-  padding: 2rem;
+  padding: 1rem;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
@@ -189,13 +189,13 @@ a {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .session-details-card {
   background: white;
   border-radius: 16px;
-  padding: 2rem;
+  padding: 1.25rem;
   box-shadow: var(--shadow-lg);
   border: 1px solid #e2e8f0;
   box-sizing: border-box;
@@ -204,12 +204,12 @@ a {
 .session-details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
+  gap: 0.75rem;
 }
 
 .session-field-box {
   background: #f8fafc;
-  padding: 1.25rem;
+  padding: 0.85rem;
   border-radius: 12px;
   border: 1px solid #f1f5f9;
   box-sizing: border-box;
@@ -254,24 +254,24 @@ a {
 /* Session Details Responsiveness */
 @media (max-width: 768px) {
   .session-details-header {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     flex-direction: row;
-    gap: 1rem;
+    gap: 0.75rem;
   }
   
   .session-details-main {
-    padding: 1.25rem 1rem;
-    gap: 1.25rem;
+    padding: 0.75rem 0.5rem;
+    gap: 0.75rem;
   }
   
   .session-details-card {
-    padding: 1.25rem;
+    padding: 1rem;
     border-radius: 14px;
   }
 
   .session-details-grid {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 0.75rem;
   }
   
   .session-details-table th, 
