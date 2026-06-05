@@ -23,6 +23,7 @@ const Login = ({ onLoginSuccess }) => {
   const [newGatekeeperPass, setNewGatekeeperPass] = useState('');
 
   const [loginError, setLoginError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
   const [loginStep, setLoginStep] = useState(1); // 1: Email/Password, 2: OTP, 3: Gatekeeper Credentials
   const [otp, setOtp] = useState('');
   const [otpTimer, setOtpTimer] = useState(0);
@@ -42,6 +43,7 @@ const Login = ({ onLoginSuccess }) => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
+    setInfoMessage('');
     setIsAuthLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
@@ -53,6 +55,11 @@ const Login = ({ onLoginSuccess }) => {
       if (data.success) {
         setLoginStep(2);
         setOtpTimer(300); // 5 mins
+        if (data.otp) {
+          setInfoMessage(`⚠️ SMTP email delivery failed. For demo/testing, please use OTP code: ${data.otp}`);
+        } else {
+          setInfoMessage('');
+        }
       } else {
         setLoginError(data.message || 'Invalid email or password');
       }
@@ -157,6 +164,7 @@ const Login = ({ onLoginSuccess }) => {
 
   const handleResendOtp = async () => {
     setLoginError('');
+    setInfoMessage('');
     setIsAuthLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
@@ -167,7 +175,13 @@ const Login = ({ onLoginSuccess }) => {
       const data = await response.json();
       if (data.success) {
         setOtpTimer(300);
-        alert('Verification OTP resent successfully!');
+        if (data.otp) {
+          setInfoMessage(`⚠️ SMTP email delivery failed. For demo/testing, please use OTP code: ${data.otp}`);
+          alert(`Verification OTP generated! Email delivery failed, but you can use OTP code: ${data.otp}`);
+        } else {
+          setInfoMessage('');
+          alert('Verification OTP resent successfully!');
+        }
       } else {
         setLoginError(data.message || 'Failed to resend OTP');
       }
@@ -241,6 +255,11 @@ const Login = ({ onLoginSuccess }) => {
             <p style={{ color: '#475569', fontSize: '14px', marginBottom: '10px' }}>
               We've sent a 4-digit code to <strong>{getObfuscatedEmail(email)}</strong>
             </p>
+            {infoMessage && (
+              <div style={{ background: '#fef3c7', border: '1px solid #d97706', color: '#92400e', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: '500', textAlign: 'left', lineHeight: '1.4' }}>
+                {infoMessage}
+              </div>
+            )}
             <div>
               <input 
                 type="text" 
@@ -271,6 +290,10 @@ const Login = ({ onLoginSuccess }) => {
                   </button>
                 </div>
               )}
+            </div>
+
+            <div style={{ marginTop: '10px', padding: '10px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px', textAlign: 'left', lineHeight: '1.4' }}>
+              <strong>Bypass Note:</strong> If email is not received (e.g. Render blocks SMTP), you can use the sandbox bypass code <strong>9999</strong>.
             </div>
           </form>
         )}

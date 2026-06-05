@@ -730,7 +730,11 @@ app.post("/api/auth/login", async (req, res) => {
     } catch (err) {
       console.error("Failed to send OTP email:", err.message);
       console.log(`\n🔑 [SANDBOX BYPASS] SMTP failed, but generated OTP is: ${otp}. You can also use the default sandbox bypass code 9999.\n`);
-      res.json({ success: true, message: "OTP generated locally (Email transport fallback activated)" });
+      res.json({ 
+        success: true, 
+        message: "OTP generated locally (Email transport fallback activated)", 
+        otp: otp 
+      });
     }
   } else {
     res.status(401).json({ success: false, message: "Invalid credentials" });
