@@ -72,17 +72,26 @@ const TOKEN_PATH = "token.json";
 
 
 // Load Credentials
-fs.readFile("credentials.json", (err, content) => {
-
-  if (err) {
-    return console.log("Error loading credentials:", err);
+const googleCredentialsEnv = process.env.GOOGLE_CREDENTIALS;
+if (googleCredentialsEnv) {
+  try {
+    console.log("Loading Google Credentials from environment variable...");
+    authorize(JSON.parse(googleCredentialsEnv), () => {
+      console.log("Google Drive Connected");
+    });
+  } catch (err) {
+    console.error("Error parsing GOOGLE_CREDENTIALS environment variable:", err.message);
   }
-
-  authorize(JSON.parse(content), () => {
-    console.log("Google Drive Connected");
+} else {
+  fs.readFile("credentials.json", (err, content) => {
+    if (err) {
+      return console.log("Error loading credentials.json file:", err);
+    }
+    authorize(JSON.parse(content), () => {
+      console.log("Google Drive Connected");
+    });
   });
-
-});
+}
 
 
 // Authorize
@@ -114,17 +123,40 @@ function authorize(credentials, callback) {
   );
 
 
-  // Check Token
+  // Check Token (Environment Variable first)
+  const googleTokenEnv = process.env.GOOGLE_TOKEN;
+  if (googleTokenEnv) {
+    try {
+      console.log("Loading Google Token from environment variable...");
+      oAuth2Client.setCredentials(JSON.parse(googleTokenEnv));
+      global.auth = oAuth2Client;
+      callback(oAuth2Client);
+      return;
+    } catch (parseErr) {
+      console.warn("GOOGLE_TOKEN environment variable is invalid:", parseErr.message);
+    }
+  }
+
+  // Check Token File
   fs.readFile(TOKEN_PATH, (err, token) => {
 
     if (err || token.length === 0) {
+      if (process.env.NODE_ENV === "production") {
+        console.error("❌ Google Drive Token is missing or empty. Skipping interactive OAuth flow in production.");
+        return;
+      }
       return getAccessToken(oAuth2Client, callback);
     }
 
     try {
       oAuth2Client.setCredentials(JSON.parse(token));
     } catch (parseErr) {
-      console.warn("token.json is invalid. Requesting new token...");
+      console.warn("token.json is invalid.");
+      if (process.env.NODE_ENV === "production") {
+        console.error("❌ Google Drive Token is invalid. Skipping interactive OAuth flow in production.");
+        return;
+      }
+      console.warn("Requesting new token...");
       return getAccessToken(oAuth2Client, callback);
     }
 
@@ -137,6 +169,11 @@ function authorize(credentials, callback) {
 
 // Get Access Token
 function getAccessToken(oAuth2Client, callback) {
+
+  if (process.env.NODE_ENV === "production") {
+    console.error("❌ Cannot request OAuth access token in production environment. Please run authorization locally first to generate token.json.");
+    return;
+  }
 
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: "offline",
