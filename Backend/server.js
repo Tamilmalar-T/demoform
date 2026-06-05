@@ -15,6 +15,12 @@ import nodemailer from "nodemailer";
 dotenv.config();
 const app = express();
 
+// Ensure uploads directory exists
+const UPLOADS_DIR = "uploads";
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR);
+}
+
 // ================= DATABASE (MONGODB) =================
 const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/mrddatabase";
 mongoose.connect(mongoURI)
