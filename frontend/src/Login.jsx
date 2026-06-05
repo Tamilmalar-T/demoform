@@ -56,7 +56,7 @@ const Login = ({ onLoginSuccess }) => {
         setLoginStep(2);
         setOtpTimer(300); // 5 mins
         if (data.otp) {
-          setInfoMessage(`⚠️ SMTP email delivery failed. For demo/testing, please use OTP code: ${data.otp}`);
+          setInfoMessage(`🔑 [Demo Mode] OTP code generated: ${data.otp}. (You can also check your email inbox if SMTP is active)`);
         } else {
           setInfoMessage('');
         }
@@ -176,8 +176,8 @@ const Login = ({ onLoginSuccess }) => {
       if (data.success) {
         setOtpTimer(300);
         if (data.otp) {
-          setInfoMessage(`⚠️ SMTP email delivery failed. For demo/testing, please use OTP code: ${data.otp}`);
-          alert(`Verification OTP generated! Email delivery failed, but you can use OTP code: ${data.otp}`);
+          setInfoMessage(`🔑 [Demo Mode] OTP code generated: ${data.otp}. (You can also check your email inbox if SMTP is active)`);
+          alert(`Verification OTP generated! For immediate login, use code: ${data.otp}`);
         } else {
           setInfoMessage('');
           alert('Verification OTP resent successfully!');

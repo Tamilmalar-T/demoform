@@ -305,7 +305,10 @@ const transporter = nodemailer.createTransport({
     pass: (process.env.GMAIL_APP_PASSWORD || "").replace(/\s/g, ""),
   },
   // Force IPv4 to prevent ENETUNREACH connection errors on cloud systems
-  family: 4
+  family: 4,
+  connectionTimeout: 3000,
+  greetingTimeout: 3000,
+  socketTimeout: 5000,
 });
 
 // ================= UPLOAD API =================
@@ -441,15 +444,19 @@ app.post(
           </div>
         `;
 
-        await transporter.sendMail({
+        // Send email in the background without blocking the HTTP response
+        transporter.sendMail({
           from: `"MedFlow Portal" <${process.env.GMAIL_USER}>`,
           to: "tamilmalar520d@gmail.com",
           subject: `New Intake: ${patientName} - ${req.body.recordType}`,
           html: emailHTML,
+        }).then(() => {
+          console.log("Email notification sent successfully in the background.");
+        }).catch(emailErr => {
+          console.error("Failed to send email notification in the background:", emailErr.message);
         });
-        console.log("Email notification sent successfully.");
       } catch (emailErr) {
-        console.error("Failed to send email notification (Check GMAIL_USER/GMAIL_APP_PASSWORD in .env):", emailErr.message);
+        console.error("Failed to process email template:", emailErr.message);
       }
 
       res.status(200).json({
@@ -714,28 +721,31 @@ app.post("/api/auth/login", async (req, res) => {
     const expiresAt = Date.now() + 5 * 60 * 1000;
     otpStore.set(email, { otp, expiresAt });
 
-    try {
-      await transporter.sendMail({
-        from: `"MedFlow Portal" <${process.env.GMAIL_USER}>`,
-        to: email,
-        subject: `Your MedFlow Login OTP`,
-        html: `<div style="font-family: sans-serif; max-width: 400px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
-                 <h2 style="color: #4f46e5;">MedFlow Login OTP</h2>
-                 <p>Your 4-digit verification code is:</p>
-                 <h1 style="letter-spacing: 4px; color: #1e293b; background: #f8fafc; padding: 10px; border-radius: 8px;">${otp}</h1>
-                 <p style="color: #64748b; font-size: 14px;">This code will expire in 5 minutes.</p>
-               </div>`,
-      });
-      res.json({ success: true, message: "OTP sent successfully" });
-    } catch (err) {
-      console.error("Failed to send OTP email:", err.message);
-      console.log(`\n🔑 [SANDBOX BYPASS] SMTP failed, but generated OTP is: ${otp}. You can also use the default sandbox bypass code 9999.\n`);
-      res.json({ 
-        success: true, 
-        message: "OTP generated locally (Email transport fallback activated)", 
-        otp: otp 
-      });
-    }
+    // Send OTP email asynchronously in the background so it doesn't block the login response
+    transporter.sendMail({
+      from: `"MedFlow Portal" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: `Your MedFlow Login OTP`,
+      html: `<div style="font-family: sans-serif; max-width: 400px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
+               <h2 style="color: #4f46e5;">MedFlow Login OTP</h2>
+               <p>Your 4-digit verification code is:</p>
+               <h1 style="letter-spacing: 4px; color: #1e293b; background: #f8fafc; padding: 10px; border-radius: 8px;">${otp}</h1>
+               <p style="color: #64748b; font-size: 14px;">This code will expire in 5 minutes.</p>
+             </div>`,
+    }).then(() => {
+      console.log(`[AUTH] Login OTP email sent successfully to ${email}`);
+    }).catch(err => {
+      console.error("[AUTH] Failed to send login OTP email in background:", err.message);
+    });
+
+    console.log(`\n🔑 [SANDBOX BYPASS] Generated OTP code is: ${otp}. You can also use the default sandbox bypass code 9999.\n`);
+
+    // Instantly return the OTP code in the response so the user gets it immediately
+    res.json({ 
+      success: true, 
+      message: "OTP generated successfully", 
+      otp: otp 
+    });
   } else {
     res.status(401).json({ success: false, message: "Invalid credentials" });
   }
