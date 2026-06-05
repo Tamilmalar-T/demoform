@@ -11,6 +11,7 @@ import { exec } from "child_process";
 import { URL } from "url";
 import mongoose from "mongoose";
 import nodemailer from "nodemailer";
+import axios from "axios";
 
 dotenv.config();
 const app = express();
@@ -311,6 +312,35 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 5000,
 });
 
+// ================= EMAIL SENDER HELPER =================
+async function sendEmail({ to, subject, html }) {
+  const gappsUrl = process.env.GMAIL_API_URL;
+  if (gappsUrl) {
+    try {
+      console.log("[EMAIL] Using Google Apps Script Web App for delivery...");
+      const response = await axios.post(gappsUrl, { to, subject, html });
+      if (response.data && response.data.success) {
+        console.log("[EMAIL] Email sent successfully via Apps Script Web App.");
+        return { success: true };
+      } else {
+        throw new Error(response.data ? response.data.error : "Unknown error");
+      }
+    } catch (err) {
+      console.error("[EMAIL] Failed to send email via Apps Script Web App:", err.message);
+      // Fallback to nodemailer SMTP
+    }
+  }
+
+  // Nodemailer SMTP fallback (for local development or if SMTP is not blocked)
+  console.log("[EMAIL] Using Nodemailer SMTP for delivery...");
+  return transporter.sendMail({
+    from: `"MedFlow Portal" <${process.env.GMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
+}
+
 // ================= UPLOAD API =================
 
 app.post(
@@ -445,8 +475,7 @@ app.post(
         `;
 
         // Send email in the background without blocking the HTTP response
-        transporter.sendMail({
-          from: `"MedFlow Portal" <${process.env.GMAIL_USER}>`,
+        sendEmail({
           to: "tamilmalar520d@gmail.com",
           subject: `New Intake: ${patientName} - ${req.body.recordType}`,
           html: emailHTML,
@@ -722,8 +751,7 @@ app.post("/api/auth/login", async (req, res) => {
     otpStore.set(email, { otp, expiresAt });
 
     // Send OTP email asynchronously in the background so it doesn't block the login response
-    transporter.sendMail({
-      from: `"MedFlow Portal" <${process.env.GMAIL_USER}>`,
+    sendEmail({
       to: email,
       subject: `Your MedFlow Login OTP`,
       html: `<div style="font-family: sans-serif; max-width: 400px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
