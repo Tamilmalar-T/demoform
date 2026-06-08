@@ -311,7 +311,6 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
             onClick={() => setShowNotifications(!showNotifications)}
             style={{
               background: 'transparent',
-              border: 'none',
               cursor: 'pointer',
               position: 'relative',
               padding: '10px',

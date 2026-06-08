@@ -249,7 +249,9 @@ function App() {
 
   // Auto-logout after 5 minutes of inactivity
   const latestLogout = useRef(handleLogout);
-  latestLogout.current = handleLogout;
+  useEffect(() => {
+    latestLogout.current = handleLogout;
+  }, [handleLogout]);
 
   useEffect(() => {
     let timeoutId;

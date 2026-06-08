@@ -347,6 +347,48 @@ function Export({ records = [], onBackClick }) {
           </div>
         )}
       </div>
+
+      {/* Printable Area hidden from screen view, used only for @media print */}
+      <div id="printable-records-area">
+        <div className="print-report-header">
+          <div>
+            <h1>Guru Shree MRD</h1>
+            <p>Clinical Patient Records Database Report</p>
+          </div>
+          <div className="print-meta-info">
+            Generated: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} | Total Records: {filteredRecords.length}
+          </div>
+        </div>
+        <table className="print-records-table">
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th>Patient Name</th>
+              <th>Age</th>
+              <th>Intake Date</th>
+              <th>Category</th>
+              <th>Gender</th>
+              <th>Created By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRecords.map((r, idx) => (
+              <tr key={idx}>
+                <td>{r.ipNo || ''}</td>
+                <td>{r.name || ''}</td>
+                <td>{r.age ? `${r.age} Yrs` : ''}</td>
+                <td>{formatDateToDDMMYYYY(r.date)}</td>
+                <td>{r.recordType || ''}</td>
+                <td>{r.gender || ''}</td>
+                <td>{r.createdBy || 'System'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="print-footer">
+          Guru Shree Medical Records Department
+        </div>
+      </div>
     </div>
   );
 }
