@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Container, Row, Col } from 'react-bootstrap';
 import { API_URL } from '../config';
 import './Requestform.css';
 
@@ -193,7 +194,7 @@ function Requestform({ requests, setRequests, doctorName, department }) {
   );
 
   return (
-    <div className="request-page-container">
+    <Container fluid className="request-page-container p-4">
       {/* 1. Real-Time Result Notifications Banners */}
       {unnotifiedResults.length > 0 && (
         <div className="status-alerts-container">
@@ -240,9 +241,9 @@ function Requestform({ requests, setRequests, doctorName, department }) {
         </div>
       )}
 
-      <div className="request-grid-layout">
+      <Row className="g-4">
         {/* 2. Glassmorphic Request Form Card */}
-        <div className="request-form-card">
+        <Col lg={6} className="request-form-card p-4">
           <div className="form-card-header">
             <div className="header-info">
               <h2>Patient Record Request Form</h2>
@@ -251,22 +252,8 @@ function Requestform({ requests, setRequests, doctorName, department }) {
           </div>
 
           <form onSubmit={handleSubmit} className="intake-form">
-            <div className="form-inputs-flow">
-              <div className={`form-group ${errors.name ? 'has-error' : ''}`} style={{ flex: '2 1 250px' }}>
-                <label htmlFor="patient-name">Patient Full Name</label>
-                <input
-                  type="text"
-                  id="patient-name"
-                  name="name"
-                  placeholder="Enter patient full name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="custom-input"
-                />
-                {errors.name && <span className="error-message">{errors.name}</span>}
-              </div>
-
-              <div className={`form-group ${errors.ipNo ? 'has-error' : ''}`} style={{ flex: '1 1 150px' }}>
+            <Row className="g-3 mb-3">
+              <Col xs={12} md={4} className={`form-group ${errors.ipNo ? 'has-error' : ''}`}>
                 <label htmlFor="patient-ip">Patient IP No</label>
                 <input
                   type="text"
@@ -278,9 +265,23 @@ function Requestform({ requests, setRequests, doctorName, department }) {
                   className="custom-input"
                 />
                 {errors.ipNo && <span className="error-message">{errors.ipNo}</span>}
-              </div>
+              </Col>
+              
+              <Col xs={12} md={5} className={`form-group ${errors.name ? 'has-error' : ''}`}>
+                <label htmlFor="patient-name">Patient Full Name</label>
+                <input
+                  type="text"
+                  id="patient-name"
+                  name="name"
+                  placeholder="Enter patient full name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="custom-input"
+                />
+                {errors.name && <span className="error-message">{errors.name}</span>}
+              </Col>
 
-              <div className={`form-group ${errors.recordType ? 'has-error' : ''}`} style={{ flex: '1.5 1 200px' }}>
+              <Col xs={12} md={3} className={`form-group ${errors.recordType ? 'has-error' : ''}`}>
                 <label htmlFor="record-type">Requested Category</label>
                 <select
                   id="record-type"
@@ -296,8 +297,8 @@ function Requestform({ requests, setRequests, doctorName, department }) {
                   <option value="Death">Death</option>
                 </select>
                 {errors.recordType && <span className="error-message">{errors.recordType}</span>}
-              </div>
-            </div>
+              </Col>
+            </Row>
 
             {/* Premium Priority Radio Group Selector */}
             <div className="form-group">
@@ -343,10 +344,10 @@ function Requestform({ requests, setRequests, doctorName, department }) {
               ✓ Request successfully submitted to administrative feed.
             </div>
           )}
-        </div>
+        </Col>
 
         {/* 3. History Feed and Logs Panel */}
-        <div className="request-history-card">
+        <Col lg={6} className="request-history-card p-0">
           <div className="history-header">
             <h3>My Requested Submissions</h3>
             <span className="history-count-badge">{filteredRequests.length} Requests</span>
@@ -611,9 +612,9 @@ function Requestform({ requests, setRequests, doctorName, department }) {
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </div>
+        </Col>
+      </Row>
+    </Container>
   );
 }
 

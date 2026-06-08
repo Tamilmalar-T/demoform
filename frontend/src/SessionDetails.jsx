@@ -1,4 +1,5 @@
 import React from 'react';
+import { Container, Row, Col } from 'react-bootstrap';
 
 const SessionDetails = ({ currentSession, sessionHistory, activeDuration, onClose }) => {
   const formatDateTimeToDDMMYYYY = (dateStr) => {
@@ -24,7 +25,7 @@ const SessionDetails = ({ currentSession, sessionHistory, activeDuration, onClos
   };
 
   return (
-    <div className="session-details-page">
+    <Container fluid className="session-details-page p-4">
       
       {/* Full Page Header */}
       <header className="session-details-header">
@@ -64,30 +65,30 @@ const SessionDetails = ({ currentSession, sessionHistory, activeDuration, onClos
           </h2>
           
           {currentSession ? (
-            <div className="session-details-grid">
-              <div className="session-field-box">
+            <Row className="g-3">
+              <Col xs={12} sm={6} md={4} lg className="session-field-box">
                 <div style={{ color: '#64748b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: '600' }}> Logged In (Email)</div>
                 <div style={{ color: '#4f46e5', fontSize: '16px', fontWeight: '600', wordBreak: 'break-all' }}>{currentSession.email || localStorage.getItem('medflow_authEmail') || 'N/A'}</div>
-              </div>
-              <div className="session-field-box">
+              </Col>
+              <Col xs={12} sm={6} md={4} lg className="session-field-box">
                 <div style={{ color: '#64748b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: '600' }}>Active(User)</div>
                 <div style={{ color: '#8b5cf6', fontSize: '16px', fontWeight: '600', wordBreak: 'break-all' }}>{currentSession.loginId || 'N/A'}</div>
-              </div>
-              <div className="session-field-box">
+              </Col>
+              <Col xs={12} sm={6} md={4} lg className="session-field-box">
                 <div style={{ color: '#64748b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: '600' }}>Login Time</div>
                 <div style={{ color: '#0f172a', fontSize: '16px', fontWeight: '500' }}>{formatDateTimeToDDMMYYYY(currentSession.loginTime)}</div>
-              </div>
-              <div className="session-field-box">
+              </Col>
+              <Col xs={12} sm={6} md={4} lg className="session-field-box">
                 <div style={{ color: '#64748b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: '600' }}>Status</div>
                 <div style={{ color: '#10b981', fontSize: '16px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   In Progress...
                 </div>
-              </div>
-              <div className="session-field-box active-highlight">
+              </Col>
+              <Col xs={12} sm={6} md={4} lg className="session-field-box active-highlight">
                 <div style={{ color: '#3b82f6', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: '600' }}>Duration so far</div>
                 <div style={{ color: '#1d4ed8', fontSize: '24px', fontWeight: '700', fontFamily: 'monospace' }}>{activeDuration}</div>
-              </div>
-            </div>
+              </Col>
+            </Row>
           ) : (
             <div style={{ padding: '40px', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
               <p style={{ fontSize: '16px', color: '#64748b', margin: 0 }}>No active session tracked. Please log out and back in.</p>
@@ -174,7 +175,7 @@ const SessionDetails = ({ currentSession, sessionHistory, activeDuration, onClos
           )}
         </section>
       </main>
-    </div>
+    </Container>
   );
 };
 

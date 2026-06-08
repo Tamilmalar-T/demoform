@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Row, Col } from 'react-bootstrap';
 import './FileUpload.css';
 import { API_URL } from './config';
 
@@ -294,14 +295,8 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
   };
 
   return (
-    <div className="request-grid-layout" style={{
-      display: 'grid',
-      gridTemplateColumns: showNotifications ? '1.2fr 1fr' : '1fr',
-      gap: showNotifications ? '2rem' : '0',
-      alignItems: 'start',
-      transition: 'all 0.3s ease'
-    }}>
-      <div className="request-form-card" style={{ padding: '2rem' }}>
+    <Row className="g-4 align-items-start" style={{ transition: 'all 0.3s ease' }}>
+      <Col lg={showNotifications ? 7 : 12} className="request-form-card p-4">
         <div className="form-card-header" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div className="header-info" style={{ flex: '1 1 300px' }}>
           <h2>Patient Record Intake Form</h2>
@@ -385,55 +380,52 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
       </div>
 
       <form onSubmit={handleSubmit} className="intake-form">
-        <div className="form-inputs-flow">
-          <div className={`form-group ${errors.ipNo ? 'has-error' : ''}`} style={{ flex: '1 1 150px', maxWidth: '250px' }}>
-            <label>Patient IP No <span className="tooltip-icon" title="Unique workstation IP">?</span></label>
-            <input type="text" id="ipNo" name="ipNo" placeholder="your IP No" value={formData.ipNo} onChange={handleInputChange} className="custom-input" />
+        <Row className="g-2 align-items-end mb-4">
+          <Col xs={12} sm={6} md={2} className={`form-group ${errors.ipNo ? 'has-error' : ''}`}>
+            <label htmlFor="ipNo">IP No</label>
+            <input type="text" id="ipNo" name="ipNo" placeholder="IP No" value={formData.ipNo} onChange={handleInputChange} className="custom-input" />
             {errors.ipNo && <span className="error-message">{errors.ipNo}</span>}
-          </div>
-          <div className={`form-group ${errors.name ? 'has-error' : ''}`} style={{ flex: '2 1 200px', maxWidth: '400px' }}>
-            <label htmlFor="name">Patient Full Name</label>
-            <input type="text" id="name" name="name" placeholder="your name" value={formData.name} onChange={handleInputChange} className="custom-input" />
+          </Col>
+          <Col xs={12} sm={6} md={3} className={`form-group ${errors.name ? 'has-error' : ''}`}>
+            <label htmlFor="name">Patient Name</label>
+            <input type="text" id="name" name="name" placeholder="Patient Name" value={formData.name} onChange={handleInputChange} className="custom-input" />
             {errors.name && <span className="error-message">{errors.name}</span>}
-          </div>
-          <div className={`form-group ${errors.age ? 'has-error' : ''}`} style={{ flex: '0 1 100px', maxWidth: '120px' }}>
+          </Col>
+
+          <Col xs={12} sm={6} md={1} className={`form-group ${errors.age ? 'has-error' : ''}`}>
             <label htmlFor="age">Age</label>
             <input type="number" id="age" name="age" placeholder="Age" min="1" max="125" value={formData.age} onChange={handleInputChange} className="custom-input text-center" />
             {errors.age && <span className="error-message">{errors.age}</span>}
-          </div>
+          </Col>
 
-          <div className={`form-group ${errors.date ? 'has-error' : ''}`} style={{ flex: '1 1 150px', maxWidth: '200px' }}>
-            <label htmlFor="date">Date</label>
-            <input type="date" id="date" name="date" value={formData.date} onChange={handleInputChange} className="custom-input" />
-          </div>
-          <div className={`form-group ${errors.gender ? 'has-error' : ''}`} style={{ flex: '2 1 250px', maxWidth: '350px' }}>
-            <label>Gender</label>
-            <div className="gender-selector">
-              <label className={`gender-option ${formData.gender === 'Male' ? 'selected' : ''}`}>
-                <input type="radio" name="gender" value="Male" checked={formData.gender === 'Male'} onChange={handleInputChange} /> Male
-              </label>
-              <label className={`gender-option ${formData.gender === 'Female' ? 'selected' : ''}`}>
-                <input type="radio" name="gender" value="Female" checked={formData.gender === 'Female'} onChange={handleInputChange} /> Female
-              </label>
-              <label className={`gender-option ${formData.gender === 'Other' ? 'selected' : ''}`}>
-                <input type="radio" name="gender" value="Other" checked={formData.gender === 'Other'} onChange={handleInputChange} /> Other
-              </label>
-            </div>
+          <Col xs={12} sm={6} md={2} className={`form-group ${errors.gender ? 'has-error' : ''}`}>
+            <label htmlFor="gender">Gender</label>
+            <select id="gender" name="gender" value={formData.gender} onChange={handleInputChange} className="custom-input">
+              <option value="" disabled>Select gender...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
             {errors.gender && <span className="error-message">{errors.gender}</span>}
-          </div>
+          </Col>
 
-          <div className={`form-group ${errors.recordType ? 'has-error' : ''}`} style={{ flex: '1 1 200px', maxWidth: '300px' }}>
-            <label htmlFor="recordType">Record Category</label>
+          <Col xs={12} sm={6} md={2} className={`form-group ${errors.date ? 'has-error' : ''}`}>
+            <label htmlFor="date">Discharge Date</label>
+            <input type="date" id="date" name="date" value={formData.date} onChange={handleInputChange} className="custom-input" />
+          </Col>
+          
+          <Col xs={12} sm={6} md={2} className={`form-group ${errors.recordType ? 'has-error' : ''}`}>
+            <label htmlFor="recordType">Type of document</label>
             <select id="recordType" name="recordType" value={formData.recordType} onChange={handleInputChange} className="custom-input">
-              <option value="" disabled>Select a category...</option>
-              <option value="MSC Patient">MSC Patient</option>
+              <option value="" disabled>Select a type...</option>
+              <option value="MLC Patient">MLC Patient</option>
               <option value="Medical Advice">Medical Advice</option>
               <option value="Birth">Birth</option>
               <option value="Death">Death</option>
             </select>
             {errors.recordType && <span className="error-message">{errors.recordType}</span>}
-          </div>
-        </div>
+          </Col>
+        </Row>
 
         <div className={`form-group ${fileError ? 'has-error' : ''}`}>
           <label>Upload Diagnostic / Medical Reports</label>
@@ -479,7 +471,7 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
         </div>
 
         <button type="submit" className="submit-btn" disabled={isSubmitting}>
-          {isSubmitting ? 'Uploading to Drive...' : '✓ Upload & Save Intake Record'}
+          {isSubmitting ? 'Uploading to Drive...' : 'Save'}
         </button>
       </form>
 
@@ -489,11 +481,11 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
           {uploadedFileUrl && <a href={uploadedFileUrl} target="_blank" rel="noopener noreferrer">View File</a>}
         </div>
       )}
-      </div>
+      </Col>
 
       {/* Right Column: Doctor Record Requests Feed */}
       {showNotifications && (
-        <div className="request-history-card" style={{ animation: 'fadeIn 0.3s ease' }}>
+        <Col lg={5} className="request-history-card p-0" style={{ animation: 'fadeIn 0.3s ease' }}>
           <div className="history-header">
             <h3>Doctor Record Requests Feed</h3>
             <span className="history-count-badge">{requests.length} Requests</span>
@@ -529,13 +521,13 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                           <span><strong>Type:</strong> {req.recordType}</span>
                         </div>
                         <div className="item-meta-row" style={{ marginTop: '4px', fontSize: '0.78rem', color: '#6366f1', display: 'flex', gap: '4px', alignItems: 'center' }}>
-                          <span>👤 <strong>Requested By:</strong> {req.doctorName ? (req.doctorName.startsWith('Dr') ? req.doctorName : 'Dr. ' + req.doctorName) : 'Unknown Doctor'} ({req.department || 'Clinical'})</span>
+                          <span>👤<strong>Requested By:</strong> {req.doctorName ? (req.doctorName.startsWith('Dr') ? req.doctorName : 'Dr. ' + req.doctorName) : 'Unknown Doctor'} ({req.department || 'Clinical'})</span>
                         </div>
                         <p className="item-reason-preview">"{req.reason}"</p>
                         <span className="item-time">
                           {new Date(req.timestamp).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
+                            hour:'2-digit',
+                            minute:'2-digit',
                           })}{' '}
                           - {new Date(req.timestamp).toLocaleDateString()}
                         </span>
@@ -799,9 +791,9 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
               </div>
             )}
           </div>
-        </div>
+        </Col>
       )}
-    </div>
+    </Row>
   );
 }
 

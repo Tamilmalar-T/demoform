@@ -299,10 +299,37 @@
 /* Stats Summary Bar */
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.5rem;
   width: 100%;
+  align-items: stretch;
 }
+
+.stats-bar .nav-btn {
+  border-radius: 12px;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.stats-bar .nav-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(79, 70, 229, 0.2);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+}
+
+.stats-bar .nav-btn.active {
+  background: rgba(79, 70, 229, 0.08);
+  border-color: rgba(79, 70, 229, 0.3);
+  color: var(--primary);
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.06);
+}
+
 
 .stat-card {
   display: flex;

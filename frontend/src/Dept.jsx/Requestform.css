@@ -154,18 +154,6 @@
 }
 
 /* 2. Grid Layout */
-.request-grid-layout {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 1rem;
-  align-items: start;
-}
-
-@media (max-width: 1024px) {
-  .request-grid-layout {
-    grid-template-columns: 1fr;
-  }
-}
 
 .request-form-card,
 .request-history-card {

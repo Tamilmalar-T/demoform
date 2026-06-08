@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { Row, Col } from 'react-bootstrap';
 import './Viewform.css';
 
-function Viewform({ records, onDeleteRecord, onEditRecord }) {
+function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecord, setSelectedRecord] = useState(null); // Patient detail card modal
-  const [genderFilter, setGenderFilter] = useState('All'); // 'All' | 'Male' | 'Female' | 'Other'
+  const [genderFilter, setGenderFilter] = useState('All');
+  const [ageFilter, setAgeFilter]       = useState('All');
+  const [typeFilter, setTypeFilter]     = useState('All');
   const [isEditing, setIsEditing] = useState(false);
   const [newFiles, setNewFiles] = useState([]);
   const [filesToDelete, setFilesToDelete] = useState([]);
@@ -47,15 +50,59 @@ function Viewform({ records, onDeleteRecord, onEditRecord }) {
     }
   };
 
-  // Filter records based on search and gender dropdown
+  const AGE_RANGES = [
+    { label: 'All Ages',  value: 'All'    },
+    { label: '0 – 5',    value: '0-5'    },
+    { label: '6 – 10',   value: '6-10'   },
+    { label: '11 – 20',  value: '11-20'  },
+    { label: '21 – 30',  value: '21-30'  },
+    { label: '31 – 40',  value: '31-40'  },
+    { label: '41 – 50',  value: '41-50'  },
+    { label: '51 – 60',  value: '51-60'  },
+    { label: '61 – 70',  value: '61-70'  },
+    { label: '71 – 80',  value: '71-80'  },
+    { label: '81 – 90',  value: '81-90'  },
+    { label: '91 – 100', value: '91-100' },
+  ];
+
+  const allTypes = ['All', ...Array.from(new Set(records.map(r => r.recordType).filter(Boolean)))];
+
+  // Fixed colors for known types; fallback palette for any other
+  const NAMED_TYPE_COLORS = {
+    'MLC Patient':     { bg: '#ede9fe', color: '#ed0909ff', border: '#a78bfa' },  // violet
+    'Birth':           { bg: '#fef9c3', color: '#713f12', border: '#ca8a04' },  // dark yellow
+    'Death':           { bg: '#fff7ed', color: '#9a3412', border: '#f97316' },  // orange
+    'Medical Advice':  { bg: '#dcfce7', color: '#14532d', border: '#16a34a' },  // dark green
+  };
+  const FALLBACK_PALETTE = [
+    { bg: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },  // blue
+    { bg: '#fce7f3', color: '#9d174d', border: '#f9a8d4' },  // pink
+    { bg: '#e0f2fe', color: '#0369a1', border: '#7dd3fc' },  // sky
+    { bg: '#fef2f2', color: '#991b1b', border: '#fca5a5' },  // red
+    { bg: '#f0fdf4', color: '#166534', border: '#86efac' },  // lime
+  ];
+  const fallbackMap = {};
+  let fallbackIdx = 0;
+  allTypes.filter(t => t !== 'All' && !NAMED_TYPE_COLORS[t]).forEach(t => {
+    fallbackMap[t] = FALLBACK_PALETTE[fallbackIdx++ % FALLBACK_PALETTE.length];
+  });
+  const getTypeStyle = (type) =>
+    NAMED_TYPE_COLORS[type] || fallbackMap[type] || { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' };
+
+  // Filter records based on search, gender, age, and type
   const filteredRecords = records.filter((rec) => {
     const matchesSearch =
       rec.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rec.ipNo.toLowerCase().includes(searchTerm.toLowerCase());
-
     const matchesGender = genderFilter === 'All' || rec.gender === genderFilter;
-
-    return matchesSearch && matchesGender;
+    const matchesType   = typeFilter === 'All' || rec.recordType === typeFilter;
+    const matchesAge = (() => {
+      if (ageFilter === 'All') return true;
+      const [min, max] = ageFilter.split('-').map(Number);
+      const a = Number(rec.age);
+      return a >= min && a <= max;
+    })();
+    return matchesSearch && matchesGender && matchesAge && matchesType;
   });
 
   const groupedRecordsMap = new Map();
@@ -277,8 +324,35 @@ function Viewform({ records, onDeleteRecord, onEditRecord }) {
             <option value="Other">Other</option>
           </select>
         </div>
-      </div>
 
+        <div className="filter-dropdown">
+          <label htmlFor="age-filter">Age:</label>
+          <select
+            id="age-filter"
+            value={ageFilter}
+            onChange={(e) => setAgeFilter(e.target.value)}
+            className="custom-select"
+          >
+            {AGE_RANGES.map(r => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-dropdown">
+          <label htmlFor="type-filter">Type:</label>
+          <select
+            id="type-filter"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="custom-select"
+          >
+            {allTypes.map(t => (
+              <option key={t} value={t}>{t === 'All' ? 'All Types' : t}</option>
+            ))}
+          </select>
+        </div>
+      </div>
       {/* Main Records Presentation */}
       {groupedRecords.length === 0 ? (
         <div className="empty-state">
@@ -304,7 +378,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord }) {
                 <th>Patient Name</th>
                 <th>Age</th>
                 <th>Intake Date</th>
-                <th>Category</th>
+                <th>type</th>
                 <th>Gender</th>
           
                 <th>Created By / On</th>
@@ -338,9 +412,25 @@ function Viewform({ records, onDeleteRecord, onEditRecord }) {
                   {/* Date column */}
                   <td>{formatDateToDDMMYYYY(group.date)}</td>
 
-                  {/* Category column */}
+                  {/* Type column */}
                   <td>
-                    <span className="ip-badge">{group.recordType || 'N/A'}</span>
+                    {(() => {
+                      const ts = getTypeStyle(group.recordType);
+                      return (
+                        <span style={{
+                          background: ts.bg,
+                          color: ts.color,
+                          border: `1px solid ${ts.border}`,
+                          borderRadius: 20,
+                          padding: '3px 10px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {group.recordType || 'N/A'}
+                        </span>
+                      );
+                    })()}
                   </td>
 
                   {/* Gender column */}
@@ -452,7 +542,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord }) {
                   <span className="detail-value">{formatDateToDDMMYYYY(group.date)}</span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">Category</span>
+                  <span className="detail-label">type</span>
                   <span className="detail-value text-badge">{group.recordType || 'N/A'}</span>
                 </div>
                 <div className="detail-item">
@@ -533,36 +623,36 @@ function Viewform({ records, onDeleteRecord, onEditRecord }) {
               </div>
               <div className="patient-header-details">
                 <h3>{selectedRecord.name}</h3>
-                <span className="patient-id">Record ID: {selectedRecord.id || selectedRecord._id}</span>
+               
               </div>
             </div>
 
-            <div className="patient-card-grid">
-              <div className="grid-item">
-                <span className="grid-label">Workstation IP Address</span>
+            <Row className="patient-card-grid g-2 mb-2">
+              <Col xs={12} sm={6} md={4} className="grid-item">
+                <span className="grid-label">IP No</span>
                 <code className="grid-value ip-code">{selectedRecord.ipNo}</code>
-              </div>
-              <div className="grid-item">
+              </Col>
+              <Col xs={12} sm={6} md={4} className="grid-item">
                 <span className="grid-label">Age</span>
                 <span className="grid-value">{selectedRecord.age} Years Old</span>
-              </div>
-              <div className="grid-item">
-                <span className="grid-label">Intake Date</span>
+              </Col>
+              <Col xs={12} sm={6} md={4} className="grid-item">
+                <span className="grid-label">Discharge</span>
                 <span className="grid-value">{formatDateToDDMMYYYY(selectedRecord.date)}</span>
-              </div>
-              <div className="grid-item">
+              </Col>
+              <Col xs={12} sm={6} md={4} className="grid-item">
                 <span className="grid-label">Gender</span>
                 <span className={`gender-tag ${selectedRecord.gender.toLowerCase()} large`}>
                   {selectedRecord.gender}
                 </span>
-              </div>
-              <div className="grid-item">
-                <span className="grid-label">Category</span>
+              </Col>
+              <Col xs={12} sm={6} md={4} className="grid-item">
+                <span className="grid-label">type</span>
                 <span className="grid-value" style={{ textTransform: 'capitalize' }}>
                   {selectedRecord.recordType || 'Uncategorized'}
                 </span>
-              </div>
-              <div className="grid-item">
+              </Col>
+              <Col xs={12} sm={6} md={4} className="grid-item">
                 <span className="grid-label">Created By / On</span>
                 <span className="grid-value" style={{ color: '#4f46e5', fontWeight: 'bold' }}>
                   {selectedRecord.createdBy || 'System'}{' '}
@@ -572,8 +662,8 @@ function Viewform({ records, onDeleteRecord, onEditRecord }) {
                     </span>
                   )}
                 </span>
-              </div>
-              <div className="grid-item">
+              </Col>
+              <Col xs={12} sm={6} md={4} className="grid-item">
                 <span className="grid-label">Last Updated By / On</span>
                 <span className="grid-value" style={{ color: selectedRecord.updatedBy ? '#10b981' : '#cbd5e1', fontWeight: selectedRecord.updatedBy ? 'bold' : 'normal' }}>
                   {selectedRecord.updatedBy ? (
@@ -587,8 +677,8 @@ function Viewform({ records, onDeleteRecord, onEditRecord }) {
                     </>
                   ) : '—'}
                 </span>
-              </div>
-            </div>
+              </Col>
+            </Row>
 
             {/* Diagnostic Document Preview Section */}
             <div className="diagnostic-document-section">

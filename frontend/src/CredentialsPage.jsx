@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Container, Row, Col } from 'react-bootstrap';
 
 const CredentialsPage = () => {
   const navigate = useNavigate();
@@ -147,27 +148,22 @@ const CredentialsPage = () => {
   const additionalGatekeepers = gatekeepers.filter(u => u.username !== 'sadhana');
 
   return (
-    <div style={{
+    <Container fluid className="p-0" style={{
       minHeight: '100vh',
       background: 'radial-gradient(circle at 10% 20%, rgb(242, 246, 253) 0%, rgb(224, 233, 248) 90.1%)',
-      padding: '0',
       fontFamily: '"Outfit", "Inter", sans-serif',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center'
     }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '100%',
-        background: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(20px)',
-        borderRadius: '0',
-        boxShadow: '0 20px 40px rgba(99, 102, 241, 0.08), 0 0 50px rgba(99, 102, 241, 0.04)',
-        border: 'none',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      <Row className="m-0 justify-content-center">
+        <Col xs={12} className="p-0" style={{
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '0',
+          boxShadow: '0 20px 40px rgba(99, 102, 241, 0.08), 0 0 50px rgba(99, 102, 241, 0.04)',
+          border: 'none',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
         {/* Top Header */}
         <div style={{
           background: 'linear-gradient(135deg, #4f46e5 0%, #818cf8 100%)',
@@ -227,10 +223,11 @@ const CredentialsPage = () => {
               🛡️ Admin & User Accounts
             </h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', flexWrap: 'wrap' }}>
+            <Row className="g-4">
               
               {/* Primary Admin Card */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Col lg={6}>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: '800', background: '#dbeafe', color: '#1e40af', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
                     Primary Email Login
@@ -253,9 +250,11 @@ const CredentialsPage = () => {
                   </div>
                 </div>
               </div>
+              </Col>
 
               {/* Secondary Gatekeeper Card */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Col lg={6}>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: '800', background: '#e0e7ff', color: '#3730a3', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
                     Users log
@@ -366,8 +365,9 @@ const CredentialsPage = () => {
 
                 </div>
               </div>
+              </Col>
 
-            </div>
+            </Row>
           </div>
 
           {/* SECTION 2: CLINICAL SPECIALIZATIONS */}
@@ -376,10 +376,11 @@ const CredentialsPage = () => {
               Doctors Log
             </h3>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <Row className="g-4">
               
               {/* Card 1: Clinical Doctor Mappings */}
-              <div style={{ background: '#fcf8ff', border: '1px solid #f3e8ff', borderRadius: '18px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Col xs={12}>
+                <div style={{ background: '#fcf8ff', border: '1px solid #f3e8ff', borderRadius: '18px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: '800', background: '#f3e8ff', color: '#6b21a8', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
                     CLINICAL SIGN IN MAPPINGS
@@ -485,8 +486,9 @@ const CredentialsPage = () => {
 
                 </div>
               </div>
+              </Col>
 
-            </div>
+            </Row>
           </div>
 
         </div>
@@ -503,8 +505,9 @@ const CredentialsPage = () => {
         }}>
           🛡️ MedFlow Security sandbox system. Do not expose production level key credentials on public deployments.
         </div>
-      </div>
-    </div>
+      </Col>
+    </Row>
+  </Container>
   );
 };
 

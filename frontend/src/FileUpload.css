@@ -101,12 +101,12 @@
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
   text-align: left;
 }
 
 .form-group label {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-secondary, #475569);
   display: flex;
@@ -143,12 +143,12 @@
 
 .custom-input {
   width: 100%;
-  padding: 0.85rem 1rem;
+  padding: 0.55rem 0.75rem;
   background: var(--input-bg, #ffffff);
   border: 1px solid var(--input-border, #cbd5e1);
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--text-primary, #0f172a);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
