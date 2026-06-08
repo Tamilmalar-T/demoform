@@ -2,8 +2,6 @@ import { useState } from 'react';
 
 const DEPT_TYPES = ['Clinic', 'Non-Clinic'];
 
-const generateCode = () => 'DEPT-' + Math.random().toString(36).substr(2, 5).toUpperCase();
-
 const nowStr = () =>
   new Date().toLocaleString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -43,7 +41,7 @@ export default function DepartmentsPanel() {
   };
 
   const openAdd = () => {
-    setForm({ ...EMPTY_FORM, code: generateCode() });
+    setForm({ ...EMPTY_FORM });
     setEditIndex(null);
     setErrors({});
     setFormMode('add');

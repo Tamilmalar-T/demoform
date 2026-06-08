@@ -8,8 +8,6 @@ const DEPARTMENTS = [
 
 const ROLES = ['Gatekeeper', 'Doctor', 'Admin', 'Nurse', 'Receptionist'];
 
-const generateId = () => 'USR-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-
 const nowStr = () =>
   new Date().toLocaleString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -47,7 +45,7 @@ export default function UsersPanel() {
   };
 
   const openAdd = () => {
-    setForm({ ...EMPTY_FORM, id: generateId() });
+    setForm({ ...EMPTY_FORM });
     setPhotoPreview('');
     setEditIndex(null);
     setErrors({});
@@ -69,6 +67,10 @@ export default function UsersPanel() {
 
   const validate = () => {
     const e = {};
+    if (!form.id.trim()) e.id = 'Required';
+    else if (users.some((u, i) =>
+      u.id.toLowerCase() === form.id.trim().toLowerCase() && i !== editIndex
+    )) e.id = 'User ID already exists';
     if (!form.username.trim()) e.username = 'Required';
     if (!form.password.trim()) e.password = 'Required';
     if (!form.email.trim()) e.email = 'Required';
@@ -261,8 +263,15 @@ export default function UsersPanel() {
 
               {/* ID */}
               <div>
-                <label style={labelStyle}>User ID</label>
-                <input value={form.id} readOnly style={readonlyInp} />
+                <label style={labelStyle}>User ID <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  id="field-userid"
+                  value={form.id}
+                  onChange={setField('id')}
+                  style={inp('id')}
+                  placeholder="e.g. USR-01"
+                />
+                {errors.id && <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: 3 }}>⚠ {errors.id}</div>}
               </div>
 
               {/* Role */}
