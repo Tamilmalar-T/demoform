@@ -92,8 +92,8 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   // Filter records based on search, gender, age, and type
   const filteredRecords = records.filter((rec) => {
     const matchesSearch =
-      rec.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rec.ipNo.toLowerCase().includes(searchTerm.toLowerCase());
+      (rec.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (rec.ipNo || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGender = genderFilter === 'All' || rec.gender === genderFilter;
     const matchesType   = typeFilter === 'All' || rec.recordType === typeFilter;
     const matchesAge = (() => {
@@ -251,11 +251,13 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
         }
 
         const editSuccess = await onEditRecord(editId, filesArray, keepOrig);
-        if (!editSuccess) success = false;
-
-        const idsToDelete = deletingAll ? filesToDelete.filter(id => id !== baseId) : filesToDelete;
-        for (const id of idsToDelete) {
-          await onDeleteRecord(id);
+        if (!editSuccess) {
+          success = false;
+        } else {
+          const idsToDelete = deletingAll ? filesToDelete.filter(id => id !== baseId) : filesToDelete;
+          for (const id of idsToDelete) {
+            await onDeleteRecord(id);
+          }
         }
 
       } else {
@@ -374,10 +376,10 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
           <table className="submissions-table">
             <thead>
               <tr>
-                <th>IP Address</th>
+                <th>IP No</th>
                 <th>Patient Name</th>
                 <th>Age</th>
-                <th>Intake Date</th>
+                <th> Date</th>
                 <th>type</th>
                 <th>Gender</th>
           
@@ -435,7 +437,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
 
                   {/* Gender column */}
                   <td>
-                    <span className={`gender-tag ${group.gender.toLowerCase()}`}>
+                    <span className={`gender-tag ${(group.gender || '').toLowerCase()}`}>
                       {group.gender}
                     </span>
                   </td>
@@ -527,7 +529,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                     <code className="ip-badge">{group.ipNo}</code>
                   </div>
                 </div>
-                <span className={`gender-tag ${group.gender.toLowerCase()}`}>
+                <span className={`gender-tag ${(group.gender || '').toLowerCase()}`}>
                   {group.gender}
                 </span>
               </div>
@@ -538,7 +540,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                   <span className="detail-value">{group.age} yrs</span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">Intake Date</span>
+                  <span className="detail-label">Date</span>
                   <span className="detail-value">{formatDateToDDMMYYYY(group.date)}</span>
                 </div>
                 <div className="detail-item">
@@ -642,7 +644,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
               </Col>
               <Col xs={12} sm={6} md={4} className="grid-item">
                 <span className="grid-label">Gender</span>
-                <span className={`gender-tag ${selectedRecord.gender.toLowerCase()} large`}>
+                <span className={`gender-tag ${(selectedRecord.gender || '').toLowerCase()} large`}>
                   {selectedRecord.gender}
                 </span>
               </Col>
@@ -803,19 +805,42 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
               )}
             </div>
 
-            <div className="modal-footer-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+            <div className="modal-footer-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
               {!isEditing ? (
                 <>
+                  <button className="btn-edit-modal" onClick={() => setIsEditing(true)} style={{ background: '#4f46e5', color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
+                    ✏️ Edit Files
+                  </button>
                   <button className="btn-close-modal" onClick={handleCloseModal} style={{ background: '#e2e8f0', color: '#475569', padding: '10px 20px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
                     Dismiss Record View
                   </button>
                 </>
               ) : (
                 <>
-                  <button className="btn-save-modal" onClick={handleSaveEdit} disabled={isUploading} style={{ background: '#10b981', color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: isUploading ? 'not-allowed' : 'pointer', marginRight: '10px', opacity: isUploading ? 0.7 : 1, fontSize: '14px' }}>
+                  <button
+                    className="btn-cancel-modal"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setNewFiles([]);
+                      setFilesToDelete([]);
+                    }}
+                    disabled={isUploading}
+                    style={{
+                      background: '#e2e8f0',
+                      color: '#475569',
+                      padding: '10px 20px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontWeight: 'bold',
+                      cursor: isUploading ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button className="btn-save-modal" onClick={handleSaveEdit} disabled={isUploading} style={{ background: '#10b981', color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.7 : 1, fontSize: '14px' }}>
                     {isUploading ? 'Saving...' : 'Save Uploads'}
                   </button>
-                  
                 </>
               )}
             </div>
