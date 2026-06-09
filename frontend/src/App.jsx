@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import FileUpload from './FileUpload';
 import Viewform from './Viewform';
 import Requestform from './Dept.jsx/Requestform';
-import Export from './Export';
+import Barcode from './Barcode';
 import Login from './Login';
 import DeptLogin from './DeptLogin';
 import SessionDetails from './SessionDetails';
@@ -604,7 +604,7 @@ function App() {
                       onExportClick={() => setActiveTab('export')}
                     />
                   ) : activeTab === 'export' ? (
-                    <Export
+                    <Barcode
                       records={records}
                       onBackClick={() => setActiveTab('view')}
                     />

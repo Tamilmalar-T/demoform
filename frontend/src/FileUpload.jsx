@@ -477,7 +477,7 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
       <Col lg={showNotifications ? 7 : 12} className="request-form-card p-4">
         <div className="form-card-header" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div className="header-info" style={{ flex: '1 1 300px' }}>
-            <h2>Patient Record Intake Form</h2>
+            <h2>Patient Record Uplode</h2>
             <p>Please enter details accurately to sync with the digital diagnostic records.</p>
           </div>
 
