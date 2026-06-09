@@ -7,17 +7,16 @@ const DeptLogin = ({ onLoginSuccess }) => {
   const [doctorName, setDoctorName] = useState('');
   const [dept, setDept] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
 
-  const departments = [
-    'Cardiology',
-    'Pediatrics',
-    'General Medicine',
-    'MSC Patient Care',
-    'Emergency Medicine',
-    'Obstetrics & Gynecology'
-  ];
+  const [departments] = useState(() =>
+    JSON.parse(localStorage.getItem('medflow_departments_v2') || '[]').map(d => d.name)
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,9 +33,54 @@ const DeptLogin = ({ onLoginSuccess }) => {
       setIsLoading(false);
       return;
     }
-    if (!password) {
+    if (!isResetMode && !password) {
       setError('Please enter your password.');
       setIsLoading(false);
+      return;
+    }
+
+    if (isResetMode) {
+      if (!newPassword || !confirmPassword) {
+        setError('Please enter and confirm your new password.');
+        setIsLoading(false);
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError('Passwords do not match.');
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch(`${API_URL}/api/auth/dept-reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ doctorName, dept, newPassword })
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          const registeredDoctors = JSON.parse(localStorage.getItem('medflow_registered_doctors') || '[]');
+          const index = registeredDoctors.findIndex(d => d.doctorName === doctorName && d.dept === dept);
+          if (index >= 0) {
+            registeredDoctors[index].password = newPassword;
+            localStorage.setItem('medflow_registered_doctors', JSON.stringify(registeredDoctors));
+          } else {
+            registeredDoctors.push({ doctorName, dept, password: newPassword });
+            localStorage.setItem('medflow_registered_doctors', JSON.stringify(registeredDoctors));
+          }
+          setSuccess('Password reset successfully. Please sign in with your new password.');
+          setIsResetMode(false);
+          setPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        } else {
+          setError(data.message || 'Failed to reset password.');
+        }
+      } catch (err) {
+        console.error('Dept reset error:', err);
+        setError('Connection to auth server failed.');
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -101,6 +145,15 @@ const DeptLogin = ({ onLoginSuccess }) => {
             </div>
           )}
 
+          {success && (
+            <div className="dept-error-banner" style={{ background: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{success}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="dept-login-form">
             <div className="input-group-premium">
               <label htmlFor="doctorName">Doctor Name</label>
@@ -136,23 +189,74 @@ const DeptLogin = ({ onLoginSuccess }) => {
               </div>
             </div>
 
-            <div className="input-group-premium">
-              <label htmlFor="password">Department Keycard Password</label>
-              <div className="input-with-icon">
-                <span className="input-icon">🔑</span>
-                <input
-                  type="password"
-                  id="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+            {!isResetMode ? (
+              <div className="input-group-premium">
+                <label htmlFor="password">Department Keycard Password</label>
+                <div className="input-with-icon">
+                  <span className="input-icon">🔑</span>
+                  <input
+                    type="password"
+                    id="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required={!isResetMode}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                  <div className="help-text">
+                    💡 Hint: Default password is <strong>123</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setIsResetMode(true); setError(''); setSuccess(''); }}
+                    style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
               </div>
-              <div className="help-text">
-                💡 Hint: For clinical sandbox testing, enter password <strong>123</strong>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="input-group-premium">
+                  <label htmlFor="newPassword">New Password</label>
+                  <div className="input-with-icon">
+                    <span className="input-icon">🔒</span>
+                    <input
+                      type="password"
+                      id="newPassword"
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required={isResetMode}
+                    />
+                  </div>
+                </div>
+                <div className="input-group-premium">
+                  <label htmlFor="confirmPassword">Confirm New Password</label>
+                  <div className="input-with-icon">
+                    <span className="input-icon">🔒</span>
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required={isResetMode}
+                    />
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', marginTop: '-10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setIsResetMode(false); setError(''); setSuccess(''); }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}
+                  >
+                    Back to Login
+                  </button>
+                </div>
+              </>
+            )}
 
             <button
               type="submit"
@@ -163,7 +267,7 @@ const DeptLogin = ({ onLoginSuccess }) => {
                 <span className="loader-spinner"></span>
               ) : (
                 <>
-                  <span>Secure Clinical Sign In</span>
+                  <span>{isResetMode ? 'Reset Password' : 'Secure Clinical Sign In'}</span>
                   <span className="arrow-icon">→</span>
                 </>
               )}

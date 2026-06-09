@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Row, Col } from 'react-bootstrap';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import './Viewform.css';
 
 function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecord, setSelectedRecord] = useState(null); // Patient detail card modal
-  const [genderFilter, setGenderFilter] = useState('All');
-  const [ageFilter, setAgeFilter]       = useState('All');
-  const [typeFilter, setTypeFilter]     = useState('All');
+  const [filterCategory, setFilterCategory] = useState('Gender');
+  const [filterValue, setFilterValue] = useState('All');
   const [isEditing, setIsEditing] = useState(false);
   const [newFiles, setNewFiles] = useState([]);
   const [filesToDelete, setFilesToDelete] = useState([]);
@@ -36,14 +37,14 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
-      
+
       let hours = date.getHours();
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
       hours = hours ? hours : 12; // the hour '0' should be '12'
       const hoursStr = String(hours).padStart(2, '0');
       const minutes = String(date.getMinutes()).padStart(2, '0');
-      
+
       return `${day}/${month}/${year} ${hoursStr}:${minutes} ${ampm}`;
     } catch (e) {
       return 'N/A';
@@ -51,17 +52,17 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   };
 
   const AGE_RANGES = [
-    { label: 'All Ages',  value: 'All'    },
-    { label: '0 – 5',    value: '0-5'    },
-    { label: '6 – 10',   value: '6-10'   },
-    { label: '11 – 20',  value: '11-20'  },
-    { label: '21 – 30',  value: '21-30'  },
-    { label: '31 – 40',  value: '31-40'  },
-    { label: '41 – 50',  value: '41-50'  },
-    { label: '51 – 60',  value: '51-60'  },
-    { label: '61 – 70',  value: '61-70'  },
-    { label: '71 – 80',  value: '71-80'  },
-    { label: '81 – 90',  value: '81-90'  },
+    { label: 'All Ages', value: 'All' },
+    { label: '0 – 5', value: '0-5' },
+    { label: '6 – 10', value: '6-10' },
+    { label: '11 – 20', value: '11-20' },
+    { label: '21 – 30', value: '21-30' },
+    { label: '31 – 40', value: '31-40' },
+    { label: '41 – 50', value: '41-50' },
+    { label: '51 – 60', value: '51-60' },
+    { label: '61 – 70', value: '61-70' },
+    { label: '71 – 80', value: '71-80' },
+    { label: '81 – 90', value: '81-90' },
     { label: '91 – 100', value: '91-100' },
   ];
 
@@ -69,10 +70,10 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
 
   // Fixed colors for known types; fallback palette for any other
   const NAMED_TYPE_COLORS = {
-    'MLC Patient':     { bg: '#ede9fe', color: '#ed0909ff', border: '#a78bfa' },  // violet
-    'Birth':           { bg: '#fef9c3', color: '#713f12', border: '#ca8a04' },  // dark yellow
-    'Death':           { bg: '#fff7ed', color: '#9a3412', border: '#f97316' },  // orange
-    'Medical Advice':  { bg: '#dcfce7', color: '#14532d', border: '#16a34a' },  // dark green
+    'MLC Patient': { bg: '#ede9fe', color: '#ed0909ff', border: '#a78bfa' },  // violet
+    'Birth': { bg: '#fef9c3', color: '#713f12', border: '#ca8a04' },  // dark yellow
+    'Death': { bg: '#fff7ed', color: '#9a3412', border: '#f97316' },  // orange
+    'Medical Advice': { bg: '#dcfce7', color: '#14532d', border: '#16a34a' },  // dark green
   };
   const FALLBACK_PALETTE = [
     { bg: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },  // blue
@@ -89,21 +90,90 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   const getTypeStyle = (type) =>
     NAMED_TYPE_COLORS[type] || fallbackMap[type] || { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' };
 
-  // Filter records based on search, gender, age, and type
+  // Filter records based on search and dynamic category
   const filteredRecords = records.filter((rec) => {
     const matchesSearch =
       (rec.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (rec.ipNo || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGender = genderFilter === 'All' || rec.gender === genderFilter;
-    const matchesType   = typeFilter === 'All' || rec.recordType === typeFilter;
-    const matchesAge = (() => {
-      if (ageFilter === 'All') return true;
-      const [min, max] = ageFilter.split('-').map(Number);
-      const a = Number(rec.age);
-      return a >= min && a <= max;
-    })();
-    return matchesSearch && matchesGender && matchesAge && matchesType;
+      
+    let matchesCategory = true;
+    if (filterValue !== 'All') {
+      if (filterCategory === 'Gender') {
+        matchesCategory = rec.gender === filterValue;
+      } else if (filterCategory === 'Type') {
+        matchesCategory = rec.recordType === filterValue;
+      } else if (filterCategory === 'Age') {
+        const [min, max] = filterValue.split('-').map(Number);
+        const a = Number(rec.age);
+        matchesCategory = a >= min && a <= max;
+      }
+    }
+    
+    return matchesSearch && matchesCategory;
   });
+
+  const handleExportPDF = () => {
+    if (filteredRecords.length === 0) {
+      alert('No logs found to export.');
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(18);
+    doc.text('GURU SHREE', 14, 15);
+    doc.setFontSize(12);
+    doc.text('Clinical Patient Records Database Report', 14, 22);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}  |  Records: ${filteredRecords.length}`, 14, 28);
+
+    autoTable(doc, {
+      startY: 33,
+      head: [['IP No', 'Patient Name', 'Age', 'Date', 'Type', 'Gender', 'Created By']],
+      body: filteredRecords.map((r) => [
+        r.ipNo || '', r.name || '', r.age || '', formatDateToDDMMYYYY(r.date), r.recordType || '', r.gender || '', r.createdBy || 'System',
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+    doc.save(`patient_records_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const handleExportExcel = () => {
+    if (filteredRecords.length === 0) {
+      alert('No logs found to export.');
+      return;
+    }
+    let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head><meta charset="utf-8" /><style>table { border-collapse: collapse; } th, td { border: 1px solid #cbd5e1; padding: 8px; }</style></head>
+      <body>
+        <h3>Guru Shree MRD - Patient Submissions Log</h3>
+        <table>
+          <thead><tr><th>IP Address</th><th>Patient Name</th><th>Age</th><th>Date</th><th>Type</th><th>Gender</th><th>Created By</th></tr></thead>
+          <tbody>
+            ${filteredRecords.map(r => `<tr><td>${r.ipNo || ''}</td><td>${r.name || ''}</td><td>${r.age || ''}</td><td>${r.date || ''}</td><td>${r.recordType || ''}</td><td>${r.gender || ''}</td><td>${r.createdBy || 'System'}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </body></html>
+    `;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `patient_records_${new Date().toISOString().split('T')[0]}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportAction = (e) => {
+    const action = e.target.value;
+    if (action === 'pdf') handleExportPDF();
+    if (action === 'excel') handleExportExcel();
+    if (action === 'print') window.print();
+    e.target.value = ''; // reset dropdown
+  };
 
   const groupedRecordsMap = new Map();
   filteredRecords.forEach(record => {
@@ -313,45 +383,63 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
         </div>
 
         <div className="filter-dropdown">
-          <label htmlFor="gender-filter">Gender:</label>
+          <label htmlFor="filter-category" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Filter By:</label>
           <select
-            id="gender-filter"
-            value={genderFilter}
-            onChange={(e) => setGenderFilter(e.target.value)}
+            id="filter-category"
+            value={filterCategory}
+            onChange={(e) => {
+              setFilterCategory(e.target.value);
+              setFilterValue('All');
+            }}
             className="custom-select"
+            style={{ width: '120px' }}
           >
-            <option value="All">All Genders</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
+            <option value="Gender">Gender</option>
+            <option value="Age">Age</option>
+            <option value="Type">Type</option>
+          </select>
+
+          <select
+            id="filter-value"
+            value={filterValue}
+            onChange={(e) => setFilterValue(e.target.value)}
+            className="custom-select"
+            style={{ minWidth: '140px' }}
+          >
+            {filterCategory === 'Gender' && (
+              <>
+                <option value="All">All Genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </>
+            )}
+            {filterCategory === 'Age' && (
+              AGE_RANGES.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))
+            )}
+            {filterCategory === 'Type' && (
+              allTypes.map(t => (
+                <option key={t} value={t}>{t === 'All' ? 'All Types' : t}</option>
+              ))
+            )}
           </select>
         </div>
 
         <div className="filter-dropdown">
-          <label htmlFor="age-filter">Age:</label>
+          <label htmlFor="export-dropdown">Export:</label>
           <select
-            id="age-filter"
-            value={ageFilter}
-            onChange={(e) => setAgeFilter(e.target.value)}
+            id="export-dropdown"
             className="custom-select"
+            style={{ background: '#f8fafc', borderColor: '#cbd5e1', fontWeight: 'bold' }}
+            onChange={handleExportAction}
+            defaultValue=""
           >
-            {AGE_RANGES.map(r => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="filter-dropdown">
-          <label htmlFor="type-filter">Type:</label>
-          <select
-            id="type-filter"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="custom-select"
-          >
-            {allTypes.map(t => (
-              <option key={t} value={t}>{t === 'All' ? 'All Types' : t}</option>
-            ))}
+            <option value="" disabled>Select Format...</option>
+            <option value="pdf">📄 PDF Document</option>
+            <option value="excel">📊 Excel Spreadsheet</option>
+            <option value="print">🖨️ Print Records</option>
           </select>
         </div>
       </div>
@@ -372,244 +460,265 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
         </div>
       ) : (
         <>
-        <div className="table-responsive-wrapper desktop-only">
-          <table className="submissions-table">
-            <thead>
-              <tr>
-                <th>IP No</th>
-                <th>Patient Name</th>
-                <th>Age</th>
-                <th> Date</th>
-                <th>type</th>
-                <th>Gender</th>
-          
-                <th>Created By / On</th>
-                <th>Updated By / On</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groupedRecords.map((group) => (
-                <tr key={group.id || group._id} className="record-row">
-                  
-                   {/* IP column */}
-                  <td>
-                    <code className="ip-badge">{group.ipNo}</code>
-                  </td>
+          <div className="table-responsive-wrapper desktop-only">
+            <table className="submissions-table">
+              <thead>
+                <tr>
+                  <th>IP No</th>
+                  <th>Patient Name</th>
+                  <th>Age</th>
+                  <th> Date</th>
+                  <th>type</th>
+                  <th>Gender</th>
 
-{/* Name column */}
-                  <td className="font-semibold">
-                    <div className="text-primary-cell">
-                      {/* <div className="avatar-placeholder">
+                  <th>Created By / On</th>
+                  <th>Updated By / On</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupedRecords.map((group) => (
+                  <tr key={group.id || group._id} className="record-row" style={records.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
+
+                    {/* IP column */}
+                    <td>
+                      <code className="ip-badge">{group.ipNo}</code>
+                      {records.filter(r => r.ipNo === group.ipNo).length > 1 && (
+                        <span style={{
+                          color: '#ef4444',
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          display: 'block',
+                          marginTop: '4px',
+                          background: '#fee2e2',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          width: 'fit-content'
+                        }}>
+                          Already Exists
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Name column */}
+                    <td className="font-semibold">
+                      <div className="text-primary-cell">
+                        {/* <div className="avatar-placeholder">
                         {group.name.charAt(0).toUpperCase()}
                       </div> */}
-                      {group.name}
-                    </div>
-                  </td>
+                        {group.name}
+                      </div>
+                    </td>
 
-                 
-                  {/* Age column */}
-                  <td>{group.age} </td>
 
-                  {/* Date column */}
-                  <td>{formatDateToDDMMYYYY(group.date)}</td>
+                    {/* Age column */}
+                    <td>{group.age} </td>
 
-                  {/* Type column */}
-                  <td>
-                    {(() => {
-                      const ts = getTypeStyle(group.recordType);
-                      return (
-                        <span style={{
-                          background: ts.bg,
-                          color: ts.color,
-                          border: `1px solid ${ts.border}`,
-                          borderRadius: 20,
-                          padding: '3px 10px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          whiteSpace: 'nowrap',
-                        }}>
-                          {group.recordType || 'N/A'}
-                        </span>
-                      );
-                    })()}
-                  </td>
+                    {/* Date column */}
+                    <td>{formatDateToDDMMYYYY(group.date)}</td>
 
-                  {/* Gender column */}
-                  <td>
-                    <span className={`gender-tag ${(group.gender || '').toLowerCase()}`}>
-                      {group.gender}
-                    </span>
-                  </td>
+                    {/* Type column */}
+                    <td>
+                      {(() => {
+                        const ts = getTypeStyle(group.recordType);
+                        return (
+                          <span style={{
+                            background: ts.bg,
+                            color: ts.color,
+                            border: `1px solid ${ts.border}`,
+                            borderRadius: 20,
+                            padding: '3px 10px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {group.recordType || 'N/A'}
+                          </span>
+                        );
+                      })()}
+                    </td>
 
-                 
-
-                  {/* Created By / On column */}
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      <span style={{ fontSize: '13px', color: '#4f46e5', fontWeight: 'bold' }}>
-                        {group.createdBy || 'System'}
+                    {/* Gender column */}
+                    <td>
+                      <span className={`gender-tag ${(group.gender || '').toLowerCase()}`}>
+                        {group.gender}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap' }}>
-                        {group.createdAt ? formatDateTimeToDDMMYYYY(group.createdAt) : 'N/A'}
-                      </span>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Updated By / On column */}
-                  <td>
-                    {group.updatedBy ? (
+
+
+                    {/* Created By / On column */}
+                    <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 'bold' }}>
-                          {group.updatedBy}
+                        <span style={{ fontSize: '13px', color: '#4f46e5', fontWeight: 'bold' }}>
+                          {group.createdBy || 'System'}
                         </span>
                         <span style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap' }}>
-                          {group.updatedAt ? formatDateTimeToDDMMYYYY(group.updatedAt) : ''}
+                          {group.createdAt ? formatDateTimeToDDMMYYYY(group.createdAt) : 'N/A'}
                         </span>
                       </div>
-                    ) : (
-                      <span style={{ fontSize: '13px', color: '#cbd5e1' }}>—</span>
-                    )}
-                  </td>
+                    </td>
 
-                  {/* Actions column */}
-                  <td className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="table-actions">
-                      <button
-                        className="action-icon-btn view-btn"
-                        onClick={() => setSelectedRecord(group)}
-                        title="View Full Profile Card"
-                      >
-                        👁️
-                      </button>
-                      <button
-                        className="action-icon-btn edit-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedRecord(group);
-                          setIsEditing(true);
-                        }}
-                        title="Edit Record"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className="action-icon-btn delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm(`Delete ${group.files.length} record(s) for this patient?`)) {
-                            group.files.forEach(f => {
-                              onDeleteRecord(f.id || f._id);
-                            });
-                          }
-                        }}
-                        title="Delete Record"
-                      >
-                        🗑️
-                      </button>
+                    {/* Updated By / On column */}
+                    <td>
+                      {group.updatedBy ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 'bold' }}>
+                            {group.updatedBy}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                            {group.updatedAt ? formatDateTimeToDDMMYYYY(group.updatedAt) : ''}
+                          </span>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '13px', color: '#cbd5e1' }}>—</span>
+                      )}
+                    </td>
+
+                    {/* Actions column */}
+                    <td className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="table-actions">
+                        <button
+                          className="action-icon-btn view-btn"
+                          onClick={() => setSelectedRecord(group)}
+                          title="View Full Profile Card"
+                        >
+                          👁️
+                        </button>
+                        <button
+                          className="action-icon-btn edit-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedRecord(group);
+                            setIsEditing(true);
+                          }}
+                          title="Edit Record"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="action-icon-btn delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Delete ${group.files.length} record(s) for this patient?`)) {
+                              group.files.forEach(f => {
+                                onDeleteRecord(f.id || f._id);
+                              });
+                            }
+                          }}
+                          title="Delete Record"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile-only Premium Card Grid */}
+          <div className="mobile-cards-wrapper mobile-only">
+            {groupedRecords.map((group) => (
+              <div key={group.id || group._id} className="mobile-record-card" style={records.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
+                <div className="card-header-row">
+                  <div className="patient-avatar-name">
+                    <div className="avatar-placeholder">
+                      {group.name.charAt(0).toUpperCase()}
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <div className="patient-name-ip">
+                      <span className="patient-name">{group.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <code className="ip-badge">{group.ipNo}</code>
+                        {records.filter(r => r.ipNo === group.ipNo).length > 1 && (
+                          <span style={{
+                            color: '#ef4444',
+                            fontSize: '9px',
+                            fontWeight: '700',
+                            background: '#fee2e2',
+                            padding: '1px 5px',
+                            borderRadius: '3px'
+                          }}>
+                            Already Exists
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`gender-tag ${(group.gender || '').toLowerCase()}`}>
+                    {group.gender}
+                  </span>
+                </div>
 
-        {/* Mobile-only Premium Card Grid */}
-        <div className="mobile-cards-wrapper mobile-only">
-          {groupedRecords.map((group) => (
-            <div key={group.id || group._id} className="mobile-record-card">
-              <div className="card-header-row">
-                <div className="patient-avatar-name">
-                  <div className="avatar-placeholder">
-                    {group.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="patient-name-ip">
-                    <span className="patient-name">{group.name}</span>
-                    <code className="ip-badge">{group.ipNo}</code>
-                  </div>
-                </div>
-                <span className={`gender-tag ${(group.gender || '').toLowerCase()}`}>
-                  {group.gender}
-                </span>
-              </div>
-              
-              <div className="card-body-details">
-                <div className="detail-item">
-                  <span className="detail-label">Age</span>
-                  <span className="detail-value">{group.age} yrs</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Date</span>
-                  <span className="detail-value">{formatDateToDDMMYYYY(group.date)}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">type</span>
-                  <span className="detail-value text-badge">{group.recordType || 'N/A'}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Created By</span>
-                  <span className="detail-value" style={{ color: '#4f46e5', fontWeight: 'bold', fontSize: '13px' }}>{group.createdBy || 'System'}</span>
-                </div>
-                {group.updatedBy && (
+                <div className="card-body-details">
                   <div className="detail-item">
-                    <span className="detail-label">Updated By</span>
-                    <span className="detail-value" style={{ color: '#10b981', fontWeight: 'bold', fontSize: '13px' }}>{group.updatedBy}</span>
+                    <span className="detail-label">Age</span>
+                    <span className="detail-value">{group.age} yrs</span>
                   </div>
-                )}
-              </div>
-              
-              <div className="card-files-section" onClick={(e) => e.stopPropagation()}>
-                <span className="section-label">Attachments ({group.files.length}):</span>
-                <div className="files-container">
-                  {group.files.map((fileRecord, index) => (
-                    <button
-                      key={index}
-                      className="file-link-btn"
-                      onClick={() => handleDownloadFile(fileRecord)}
-                      title={`Download ${fileRecord.fileName} (${fileRecord.fileSize})`}
-                    >
-                      <svg className="file-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span className="file-name-truncate">{fileRecord.fileName}</span>
-                    </button>
-                  ))}
+                  <div className="detail-item">
+                    <span className="detail-label">Date</span>
+                    <span className="detail-value">{formatDateToDDMMYYYY(group.date)}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">type</span>
+                    <span className="detail-value text-badge">{group.recordType || 'N/A'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Created By</span>
+                    <span className="detail-value" style={{ color: '#4f46e5', fontWeight: 'bold', fontSize: '13px' }}>{group.createdBy || 'System'}</span>
+                  </div>
+                  {group.updatedBy && (
+                    <div className="detail-item">
+                      <span className="detail-label">Updated By</span>
+                      <span className="detail-value" style={{ color: '#10b981', fontWeight: 'bold', fontSize: '13px' }}>{group.updatedBy}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="card-files-section" onClick={(e) => e.stopPropagation()}>
+                  <span className="section-label">Attachments ({group.files.length}):</span>
+                  <div className="files-container">
+                    {group.files.map((fileRecord, index) => (
+                      <button
+                        key={index}
+                        className="file-link-btn"
+                        onClick={() => handleDownloadFile(fileRecord)}
+                        title={`Download ${fileRecord.fileName} (${fileRecord.fileSize})`}
+                      >
+                        <svg className="file-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span className="file-name-truncate">{fileRecord.fileName}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card-actions-row" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="mobile-action-btn view-btn"
+                    onClick={() => setSelectedRecord(group)}
+                  >
+                    👁️ View Profile
+                  </button>
+
+                  <button
+                    className="mobile-action-btn delete-btn"
+                    onClick={() => {
+                      if (window.confirm(`Delete ${group.files.length} record(s) for this patient?`)) {
+                        group.files.forEach(f => {
+                          onDeleteRecord(f.id || f._id);
+                        });
+                      }
+                    }}
+                  >
+                    🗑️ Delete
+                  </button>
                 </div>
               </div>
-              
-              <div className="card-actions-row" onClick={(e) => e.stopPropagation()}>
-                <button
-                  className="mobile-action-btn view-btn"
-                  onClick={() => setSelectedRecord(group)}
-                >
-                  👁️ View Profile
-                </button>
-                <button
-                  className="mobile-action-btn edit-btn"
-                  onClick={() => {
-                    setSelectedRecord(group);
-                    setIsEditing(true);
-                  }}
-                >
-                  ✏️ Edit Files
-                </button>
-                <button
-                  className="mobile-action-btn delete-btn"
-                  onClick={() => {
-                    if (window.confirm(`Delete ${group.files.length} record(s) for this patient?`)) {
-                      group.files.forEach(f => {
-                        onDeleteRecord(f.id || f._id);
-                      });
-                    }
-                  }}
-                >
-                  🗑️ Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         </>
       )}
 
@@ -625,7 +734,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
               </div>
               <div className="patient-header-details">
                 <h3>{selectedRecord.name}</h3>
-               
+
               </div>
             </div>
 
@@ -633,6 +742,20 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
               <Col xs={12} sm={6} md={4} className="grid-item">
                 <span className="grid-label">IP No</span>
                 <code className="grid-value ip-code">{selectedRecord.ipNo}</code>
+                {records.filter(r => r.ipNo === selectedRecord.ipNo).length > 1 && (
+                  <span style={{
+                    color: '#ef4444',
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    background: '#fee2e2',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    display: 'inline-block',
+                    marginTop: '4px'
+                  }}>
+                    Already Exists
+                  </span>
+                )}
               </Col>
               <Col xs={12} sm={6} md={4} className="grid-item">
                 <span className="grid-label">Age</span>
@@ -692,10 +815,10 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                     <div key={index} className="document-preview-box" style={{ marginBottom: 0, height: '100%' }}>
                       <div className="document-preview-header">
                         <div className="doc-icon">
-                          {fileRecord.fileName.includes('.pdf') ? '📄' : '🖼️'}
+                          {(fileRecord.fileName || '').includes('.pdf') ? '📄' : '🖼️'}
                         </div>
                         <div className="doc-meta">
-                          <span className="doc-name">{fileRecord.fileName}</span>
+                          <span className="doc-name">{fileRecord.fileName || 'Unnamed File'}</span>
                           <span className="doc-size">{fileRecord.fileSize}</span>
                         </div>
                         <div className="doc-actions-group" style={{ display: 'flex', gap: '8px' }}>
@@ -746,8 +869,8 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                       return (
                         <li key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span>{f.fileName.includes('.pdf') ? '📄' : '🖼️'}</span>
-                            <span style={{ color: '#334155', fontSize: '14px', fontWeight: '500' }}>{f.fileName}</span>
+                            <span>{(f.fileName || '').includes('.pdf') ? '📄' : '🖼️'}</span>
+                            <span style={{ color: '#334155', fontSize: '14px', fontWeight: '500' }}>{f.fileName || 'Unnamed File'}</span>
                           </div>
                           <button
                             onClick={(e) => {
@@ -847,6 +970,48 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
           </div>
         </div>
       )}
+
+      {/* Printable Area hidden from screen view, used only for @media print */}
+      <div id="printable-records-area" style={{ display: 'none' }}>
+        <div className="print-report-header">
+          <div>
+            <h1>Guru Shree MRD</h1>
+            <p>Clinical Patient Records Database Report</p>
+          </div>
+          <div className="print-meta-info">
+            Generated: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} | Total Records: {filteredRecords.length}
+          </div>
+        </div>
+        <table className="print-records-table">
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th>Patient Name</th>
+              <th>Age</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Gender</th>
+              <th>Created By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRecords.map((r, idx) => (
+              <tr key={idx}>
+                <td>{r.ipNo || ''}</td>
+                <td>{r.name || ''}</td>
+                <td>{r.age ? `${r.age} Yrs` : ''}</td>
+                <td>{formatDateToDDMMYYYY(r.date)}</td>
+                <td>{r.recordType || ''}</td>
+                <td>{r.gender || ''}</td>
+                <td>{r.createdBy || 'System'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="print-footer">
+          Guru Shree Medical Records Department
+        </div>
+      </div>
     </div>
   );
 }

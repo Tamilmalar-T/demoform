@@ -511,6 +511,75 @@ app.get("/api/patients", async (req, res) => {
   }
 });
 
+// Bulk Import Patients
+app.post("/api/patients/bulk", async (req, res) => {
+  try {
+    const { patients } = req.body;
+    if (!patients || !Array.isArray(patients)) {
+      return res.status(400).json({ success: false, message: "Invalid patients data" });
+    }
+
+    // Collect all incoming IP Nos
+    const incomingIpNos = patients
+      .map(p => (p.ipNo || '').toString().trim())
+      .filter(Boolean);
+
+    // Find which IP Nos already exist in the database
+    const existingRecords = await Patient.find(
+      { ipNo: { $in: incomingIpNos } },
+      { ipNo: 1 }
+    );
+    const existingIpNos = new Set(existingRecords.map(r => (r.ipNo || '').toString().trim()));
+
+    // Split into new vs duplicate
+    const newPatients = [];
+    const skippedPatients = [];
+
+    patients.forEach(p => {
+      const ip = (p.ipNo || '').toString().trim();
+      if (ip && existingIpNos.has(ip)) {
+        skippedPatients.push(p);
+      } else {
+        newPatients.push(p);
+      }
+    });
+
+    // Insert only non-duplicates
+    let savedPatients = [];
+    if (newPatients.length > 0) {
+      savedPatients = await Patient.insertMany(
+        newPatients.map(p => ({
+          ipNo: p.ipNo,
+          name: p.name,
+          age: p.age ? Number(p.age) : null,
+          date: p.date,
+          gender: p.gender,
+          recordType: p.recordType,
+          createdBy: p.createdBy || "System",
+          fileName: "",
+          fileSize: "",
+          fileUrl: ""
+        }))
+      );
+    }
+
+    console.log(`[BULK IMPORT] Inserted: ${savedPatients.length}, Skipped (duplicates): ${skippedPatients.length}`);
+
+    res.json({
+      success: true,
+      message: savedPatients.length > 0
+        ? `${savedPatients.length} patient(s) imported successfully.${skippedPatients.length > 0 ? ` ${skippedPatients.length} duplicate(s) skipped.` : ''}`
+        : `All ${skippedPatients.length} record(s) already exist in the database. Nothing was imported.`,
+      records: savedPatients,
+      skipped: skippedPatients.length,
+      imported: savedPatients.length
+    });
+  } catch (error) {
+    console.error("Bulk import failed:", error);
+    res.status(500).json({ success: false, message: "Bulk import failed", error: error.message });
+  }
+});
+
 // Delete Patient Record
 app.delete("/api/patients/:id", async (req, res) => {
   try {
@@ -532,8 +601,12 @@ app.delete("/api/patients/:id", async (req, res) => {
 // Update Patient Files
 app.put("/api/patients/:id/files", upload.array("files", 10), async (req, res) => {
   try {
+    // Validate ObjectId format before querying
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid record ID format" });
+    }
     const patient = await Patient.findById(req.params.id);
-    if (!patient) return res.status(404).json({ success: false, message: "Record not found" });
+    if (!patient) return res.status(404).json({ success: false, message: "Record not found in database. It may have been deleted or belongs to a different database instance. Please refresh the page to sync." });
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, message: "No files uploaded" });
 
     const keepOriginal = req.body.keepOriginal === 'true';
@@ -769,10 +842,10 @@ app.post("/api/auth/login", async (req, res) => {
     console.log(`\n🔑 [SANDBOX BYPASS] Generated OTP code is: ${otp}. You can also use the default sandbox bypass code 9999.\n`);
 
     // Instantly return the OTP code in the response so the user gets it immediately
-    res.json({ 
-      success: true, 
-      message: "OTP generated successfully", 
-      otp: otp 
+    res.json({
+      success: true,
+      message: "OTP generated successfully",
+      otp: otp
     });
   } else {
     res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -802,12 +875,17 @@ app.post("/api/auth/verify-otp", (req, res) => {
   }
 });
 
+const doctorPasswords = new Map(); // Stores passwords for doctors. In production, use MongoDB.
+
 app.post("/api/auth/dept-login", (req, res) => {
   const { doctorName, dept, password } = req.body;
   if (!doctorName || !dept || !password) {
     return res.status(400).json({ success: false, message: "All fields are required" });
   }
-  if (password === "123") {
+  
+  const expectedPassword = doctorPasswords.get(doctorName) || "123";
+  
+  if (password === expectedPassword) {
     res.json({
       success: true,
       message: "Department login successful",
@@ -818,6 +896,17 @@ app.post("/api/auth/dept-login", (req, res) => {
   } else {
     res.status(401).json({ success: false, message: "Invalid department password" });
   }
+});
+
+app.post("/api/auth/dept-reset-password", (req, res) => {
+  const { doctorName, dept, newPassword } = req.body;
+  if (!doctorName || !dept || !newPassword) {
+    return res.status(400).json({ success: false, message: "All fields are required" });
+  }
+  
+  // In a real app, you would verify the doctor's identity (e.g., via email or security questions) before allowing a reset.
+  doctorPasswords.set(doctorName, newPassword);
+  res.json({ success: true, message: "Password reset successfully" });
 });
 
 

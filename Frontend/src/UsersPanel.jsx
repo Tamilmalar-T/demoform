@@ -1,11 +1,5 @@
 import { useState, useRef } from 'react';
 
-const DEPARTMENTS = [
-  'Cardiology', 'Pediatrics', 'General Medicine',
-  'MSC Patient Care', 'Emergency Medicine', 'Obstetrics & Gynecology',
-  'Radiology', 'Neurology', 'Orthopedics', 'Administration'
-];
-
 const ROLES = ['Gatekeeper', 'Doctor', 'Admin', 'Nurse', 'Receptionist'];
 
 const nowStr = () =>
@@ -15,13 +9,22 @@ const nowStr = () =>
   });
 
 const EMPTY_FORM = {
-  id: '', username: '', password: '', department: DEPARTMENTS[0],
+  id: '', employeeName: '', designation: '', userType: '',
+  username: '', password: '', department: '',
   role: ROLES[0], phone: '', email: '', photo: '',
 };
 
 export default function UsersPanel() {
   const [users, setUsers] = useState(() =>
     JSON.parse(localStorage.getItem('medflow_panel_users') || '[]')
+  );
+  
+  const [availableUserTypes] = useState(() =>
+    JSON.parse(localStorage.getItem('medflow_user_types_v1') || '[]')
+  );
+
+  const [availableDepartments] = useState(() =>
+    JSON.parse(localStorage.getItem('medflow_departments_v2') || '[]').map(d => d.name)
   );
 
   // 'hidden' | 'add' | 'edit'
@@ -45,7 +48,11 @@ export default function UsersPanel() {
   };
 
   const openAdd = () => {
-    setForm({ ...EMPTY_FORM });
+    setForm({ 
+      ...EMPTY_FORM, 
+      userType: availableUserTypes.length > 0 ? availableUserTypes[0].name : '',
+      department: availableDepartments.length > 0 ? availableDepartments[0] : ''
+    });
     setPhotoPreview('');
     setEditIndex(null);
     setErrors({});
@@ -55,7 +62,12 @@ export default function UsersPanel() {
 
   const openEdit = (idx) => {
     const u = users[idx];
-    setForm({ ...u });
+    setForm({ 
+      ...EMPTY_FORM, 
+      ...u,
+      userType: u.userType || (availableUserTypes.length > 0 ? availableUserTypes[0].name : ''),
+      department: u.department || (availableDepartments.length > 0 ? availableDepartments[0] : '')
+    });
     setPhotoPreview(u.photo || '');
     setEditIndex(idx);
     setErrors({});
@@ -75,7 +87,11 @@ export default function UsersPanel() {
     if (!form.password.trim()) e.password = 'Required';
     if (!form.email.trim()) e.email = 'Required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
-    if (form.phone && !/^\d{10}$/.test(form.phone.replace(/\s/g, ''))) e.phone = '10 digits required';
+    if (!form.phone) {
+      e.phone = 'Phone number is required';
+    } else if (form.phone.length !== 10) {
+      e.phone = '10 digits required';
+    }
     if (users.some((u, i) =>
       u.username.toLowerCase() === form.username.trim().toLowerCase() && i !== editIndex
     )) e.username = 'Username already exists';
@@ -121,8 +137,15 @@ export default function UsersPanel() {
 
   const setField = (name) => (e) => setForm(f => ({ ...f, [name]: e.target.value }));
 
+  const handlePhoneChange = (e) => {
+    const val = e.target.value.replace(/\D/g, ''); // Only keep numbers
+    if (val.length <= 10) {
+      setForm(f => ({ ...f, phone: val }));
+    }
+  };
+
   const filtered = users.filter(u =>
-    [u.username, u.email, u.department, u.role]
+    [u.username, u.email, u.department, u.role, u.employeeName, u.designation, u.userType]
       .join(' ').toLowerCase().includes(search.toLowerCase())
   );
 
@@ -263,7 +286,7 @@ export default function UsersPanel() {
 
               {/* ID */}
               <div>
-                <label style={labelStyle}>User ID <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={labelStyle}>Employee ID <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
                   id="field-userid"
                   value={form.id}
@@ -274,9 +297,30 @@ export default function UsersPanel() {
                 {errors.id && <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: 3 }}>⚠ {errors.id}</div>}
               </div>
 
+              {/* Employee Name */}
+              <div>
+                <label style={labelStyle}>Employee Name</label>
+                <input id="field-emp-name" value={form.employeeName} onChange={setField('employeeName')} style={inp('employeeName')} placeholder="e.g. Dr. John Doe" />
+              </div>
+
+              {/* Designation */}
+              <div>
+                <label style={labelStyle}>Designation</label>
+                <input id="field-designation" value={form.designation} onChange={setField('designation')} style={inp('designation')} placeholder="e.g. Senior Consultant" />
+              </div>
+
+              {/* User Type */}
+              <div>
+                <label style={labelStyle}>User Type</label>
+                <select id="field-usertype" value={form.userType} onChange={setField('userType')} style={inp('')}>
+                  {availableUserTypes.length === 0 && <option value="">No types found</option>}
+                  {availableUserTypes.map(t => <option key={t.code} value={t.name}>{t.name}</option>)}
+                </select>
+              </div>
+
               {/* Role */}
               <div>
-                <label style={labelStyle}>Role</label>
+                <label style={labelStyle}>System Role</label>
                 <select id="field-role" value={form.role} onChange={setField('role')} style={inp('')}>
                   {ROLES.map(r => <option key={r}>{r}</option>)}
                 </select>
@@ -300,19 +344,21 @@ export default function UsersPanel() {
               <div>
                 <label style={labelStyle}>Department</label>
                 <select id="field-department" value={form.department} onChange={setField('department')} style={inp('')}>
-                  {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
+                  {availableDepartments.length === 0 && <option value="">No departments found</option>}
+                  {availableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
 
               {/* Phone */}
               <div>
-                <label style={labelStyle}>Phone Number</label>
-                <input id="field-phone" type="tel" value={form.phone} onChange={setField('phone')} style={inp('phone')} placeholder="10-digit number" />
+                <label style={labelStyle}>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
+                <input id="field-phone" type="tel" value={form.phone} onChange={handlePhoneChange} style={inp('phone')} placeholder="10-digit number" />
                 {errors.phone && <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: 3 }}>⚠ {errors.phone}</div>}
               </div>
 
               {/* Email */}
               <div style={{ gridColumn: 'span 2' }}>
+                
                 <label style={labelStyle}>Email ID <span style={{ color: '#ef4444' }}>*</span></label>
                 <input id="field-email" type="email" value={form.email} onChange={setField('email')} style={inp('email')} placeholder="user@example.com" />
                 {errors.email && <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: 3 }}>⚠ {errors.email}</div>}
@@ -364,7 +410,7 @@ export default function UsersPanel() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr>
-                {['Photo', 'ID', 'Username', 'Role', 'Department', 'Phone', 'Email', 'Created', 'Updated', 'Actions'].map(h => (
+                {['Photo', 'ID', 'Emp. Name', 'Designation', 'User Type', 'Username', 'Sys Role', 'Department', 'Phone', 'Email', 'Created', 'Updated', 'Actions'].map(h => (
                   <th key={h} style={{
                     background: '#f8fafc', padding: '10px 14px',
                     borderBottom: '1px solid #e2e8f0', textAlign: 'left',
@@ -400,7 +446,18 @@ export default function UsersPanel() {
                       <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: 5, fontSize: '0.72rem', color: '#4f46e5' }}>{u.id}</code>
                     </td>
                     <td style={td}>
-                      <div style={{ fontWeight: 600, color: '#1e293b' }}>{u.username}</div>
+                      <div style={{ fontWeight: 600, color: '#1e293b' }}>{u.employeeName || '—'}</div>
+                    </td>
+                    <td style={td}>{u.designation || '—'}</td>
+                    <td style={td}>
+                      {u.userType ? (
+                        <span style={{ background: '#f0fdf4', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, border: '1px solid #bbf7d0' }}>
+                          {u.userType}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td style={td}>
+                      <div style={{ fontWeight: 600, color: '#475569' }}>{u.username}</div>
                       <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>{'•'.repeat(Math.min(u.password?.length || 4, 8))}</div>
                     </td>
                     <td style={td}><span style={roleBadge(u.role)}>{u.role}</span></td>

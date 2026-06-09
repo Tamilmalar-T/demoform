@@ -10,6 +10,7 @@ import SessionDetails from './SessionDetails';
 import CredentialsPage from './CredentialsPage';
 import UsersPanel from './UsersPanel';
 import DepartmentsPanel from './DepartmentsPanel';
+import UserTypesPanel from './UserTypesPanel';
 import { createPortal } from 'react-dom';
 import './App.css';
 import './Dept.jsx/Requestform.css';
@@ -192,7 +193,22 @@ function App() {
           return true;
         } else {
           console.error("Failed to update record on server", data.message, data.error);
-          alert(`Error updating record: ${data.error || data.message || "Unknown error"}`);
+          // If the record wasn't found (404), the DB and localStorage are out of sync — re-fetch to correct it
+          if (response.status === 404) {
+            alert(`This record no longer exists in the database.\n\nThe page will now refresh to sync with the latest data.`);
+            try {
+              const freshResp = await fetch(`${API_URL}/api/patients`);
+              if (freshResp.ok) {
+                const freshData = await freshResp.json();
+                setRecords(freshData);
+                localStorage.setItem('medflow_submissions', JSON.stringify(freshData));
+              }
+            } catch (syncErr) {
+              console.error("Failed to re-sync records after 404", syncErr);
+            }
+          } else {
+            alert(`Error updating record: ${data.error || data.message || "Unknown error"}`);
+          }
           return false;
         }
       } else {
@@ -554,17 +570,17 @@ function App() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Submissions Log
+                    Document Uploded List
                     {records.length > 0 && <span className="badge">{records.length}</span>}
                   </button>
                   <button
                     className={`nav-btn ${activeTab === 'export' ? 'active' : ''}`}
                     onClick={() => setActiveTab('export')}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" style={{ marginRight: '6px' }}>
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
-                      <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
-                      <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="22" height="22">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                     Export
                   </button>
@@ -578,6 +594,7 @@ function App() {
                       onViewSubmissions={() => setActiveTab('view')}
                       requests={requests}
                       setRequests={setRequests}
+                      existingRecords={records}
                     />
                   ) : activeTab === 'view' ? (
                     <Viewform
@@ -595,6 +612,8 @@ function App() {
                     <UsersPanel />
                   ) : activeTab === 'departments' ? (
                     <DepartmentsPanel />
+                  ) : activeTab === 'user-types' ? (
+                    <UserTypesPanel />
                   ) : (
                     <Requestform
                       requests={requests}
@@ -650,6 +669,7 @@ function App() {
               {[
                 { tab: 'users', icon: '👤', label: 'User Management' },
                 { tab: 'departments', icon: '🏥', label: 'Departments' },
+                { tab: 'user-types', icon: '👥', label: 'User Types' },
               ].map(({ tab, icon, label }) => (
                 <button
                   key={tab}
