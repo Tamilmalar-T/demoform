@@ -216,18 +216,7 @@ function Barcode() {
         />
       </div>
 
-      <div style={{ marginBottom: '30px', maxWidth: '400px' }}>
-        <label style={{ display: 'block', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>Or scan with physical scanner:</label>
-        <input 
-          type="text" 
-          value={manualCode}
-          onChange={(e) => setManualCode(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Click here and scan barcode..."
-          style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '16px' }}
-        />
-        <small style={{ color: '#64748b', display: 'block', marginTop: '5px' }}>Press Enter to add to list.</small>
-      </div>
+  
 
       {scannedResults.length > 0 && (() => {
         const maxColumns = Math.max(1, ...scannedResults.map(r => r.length));
