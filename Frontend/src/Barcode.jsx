@@ -1,152 +1,278 @@
 import { useState, useRef } from 'react';
-import { Row, Col } from 'react-bootstrap';
-import { Html5Qrcode } from 'html5-qrcode';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+import { DecodeHintType } from '@zxing/library';
+import { API_URL } from './config';
 import './Barcode.css';
 
-function Barcode({ records = [] }) {
+function Barcode() {
   const [isScanning, setIsScanning] = useState(false);
-  const [scannedResult, setScannedResult] = useState(null);
-  const [matchedRecord, setMatchedRecord] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [scannedResults, setScannedResults] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [manualCode, setManualCode] = useState("");
   const fileInputRef = useRef(null);
 
-  const handleBarcodeUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setIsScanning(true);
-    setScannedResult(null);
-    setMatchedRecord(null);
-
-    try {
-      const html5QrCode = new Html5Qrcode("hidden-scanner-container");
-      const decodedText = await html5QrCode.scanFile(file, true);
-      
-      setScannedResult(decodedText);
-      
-      // Find matching record by IP No
-      const match = records.find(r => 
-        (r.ipNo && r.ipNo.toLowerCase() === decodedText.toLowerCase()) || 
-        (r.name && r.name.toLowerCase() === decodedText.toLowerCase())
-      );
-      
-      if (match) {
-        setMatchedRecord(match);
-      } else {
-        alert(`Barcode scanned as "${decodedText}", but no matching patient record was found.`);
-      }
-
-    } catch (err) {
-      // html5-qrcode throws a string or object if no barcode is found
-      const errorMessage = typeof err === 'string' ? err : (err?.message || '');
-      if (errorMessage.includes('NotFoundException') || errorMessage.includes('No MultiFormat Readers')) {
-         alert("Could not detect a barcode in the uploaded image. Please ensure the image is clear and contains a valid barcode.");
-      } else {
-         console.error("Barcode scan error:", err);
-         alert("An error occurred while scanning the barcode. Please try again.");
-      }
-    } finally {
-      setIsScanning(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (manualCode.trim()) {
+        const codes = manualCode.trim().split(/[\s,]+/).filter(c => c);
+        if (codes.length > 0) {
+          setScannedResults(prev => [...prev, [...new Set(codes)]]);
+        }
+        setManualCode("");
       }
     }
   };
 
-  const formatDateToDDMMYYYY = (dateStr) => {
-    if (!dateStr) return 'N/A';
+  const handleBarcodeUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (!files || files.length === 0) return;
+
+    setSelectedFiles(prev => [...prev, ...files]);
+    setIsScanning(true);
+
+    const hints = new Map();
+    hints.set(DecodeHintType.TRY_HARDER, true);
+    const codeReader = new BrowserMultiFormatReader(hints);
+    const newResults = [];
+    let errorCount = 0;
+
+    for (const file of files) {
+      try {
+        const imageUrl = URL.createObjectURL(file);
+        let foundCodes = false;
+
+        // Try the native BarcodeDetector API first as it can find multiple codes in one image
+        if ('BarcodeDetector' in window) {
+          try {
+            // Do not specify formats explicitly to avoid crashing if the OS doesn't support a specific one
+            const barcodeDetector = new window.BarcodeDetector();
+            const img = new Image();
+            img.src = imageUrl;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+            const barcodes = await barcodeDetector.detect(img);
+            if (barcodes.length > 0) {
+              barcodes.forEach(b => newResults.push(b.rawValue));
+              foundCodes = true;
+            }
+          } catch (err) {
+            console.error("Native BarcodeDetector error:", err);
+          }
+        }
+
+        // Fallback: If native API fails or only finds 0-1 barcodes, brute-force slice the image!
+        if (!foundCodes || newResults.length < 2) {
+            const img = new Image();
+            img.src = imageUrl;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            const scanCanvas = async (cvs) => {
+               try {
+                  const dataUrl = cvs.toDataURL('image/jpeg');
+                  const res = await codeReader.decodeFromImageUrl(dataUrl);
+                  if (res) newResults.push(res.getText());
+               } catch(e) { /* ignore NotFoundException */ }
+            };
+
+            // 1. Scan Full Image
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            await scanCanvas(canvas);
+
+            // 2. Scan Image Slices (forces ZXing to find multiple barcodes in different regions)
+            if (img.width > 200 && img.height > 200) {
+              const slices = [
+                { x: 0, y: 0, w: img.width, h: img.height / 2 }, // Top Half
+                { x: 0, y: img.height / 2, w: img.width, h: img.height / 2 }, // Bottom Half
+                { x: 0, y: img.height / 4, w: img.width, h: img.height / 2 }, // Middle Horizontal
+                { x: 0, y: 0, w: img.width / 2, h: img.height }, // Left Half
+                { x: img.width / 2, y: 0, w: img.width / 2, h: img.height }, // Right Half
+                { x: img.width / 4, y: 0, w: img.width / 2, h: img.height } // Middle Vertical
+              ];
+
+              for (const slice of slices) {
+                 canvas.width = slice.w;
+                 canvas.height = slice.h;
+                 ctx.drawImage(img, slice.x, slice.y, slice.w, slice.h, 0, 0, slice.w, slice.h);
+                 await scanCanvas(canvas);
+              }
+            }
+        }
+
+        if (newResults.length === 0) {
+           errorCount++;
+        }
+
+        URL.revokeObjectURL(imageUrl);
+      } catch (err) {
+        console.error("Barcode scan error for file:", file.name, err);
+        errorCount++;
+      }
+    }
+
+    if (newResults.length > 0) {
+      // Safety net: split any commas just in case the API returned a concatenated string
+      const splitResults = newResults.flatMap(r => 
+        typeof r === 'string' ? r.split(/[\s,]+/).filter(x => x) : [r]
+      );
+      // Deduplicate within the same batch
+      const uniqueBatch = [...new Set(splitResults)];
+      setScannedResults(prev => [...prev, uniqueBatch]);
+    }
+    
+    if (errorCount > 0) {
+      alert(`Could not detect a barcode in ${errorCount} of the uploaded image(s). Please ensure the images are clear.`);
+    }
+
+    setIsScanning(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSaveToDatabase = async () => {
+    if (scannedResults.length === 0) return;
+
+    setIsSaving(true);
     try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch (e) {
-      return dateStr;
+      // Format the data into an array of objects: { "Barcode 1": "...", "Barcode 2": "..." }
+      const formattedBarcodes = scannedResults.map(row => {
+        const obj = {};
+        row.forEach((code, index) => {
+          obj[`Barcode ${index + 1}`] = code;
+        });
+        return obj;
+      });
+
+      const formData = new FormData();
+      formData.append("barcodes", JSON.stringify(formattedBarcodes));
+      
+      selectedFiles.forEach(file => {
+        formData.append("files", file);
+      });
+
+      const response = await fetch(`${API_URL}/api/barcodes/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert("Successfully saved to Database and Google Drive!");
+        setScannedResults([]);
+        setSelectedFiles([]);
+      } else {
+        alert("Failed to save: " + data.message);
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("An error occurred while saving to the database.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
-    <div className="export-page-container">
-      <div className="export-header-row">
+    <div className="export-page-container" style={{ padding: '20px' }}>
+      <div className="export-header-row" style={{ marginBottom: '20px' }}>
         <div>
           <h2>Barcode Scanner</h2>
-          <p>Upload a barcode image to instantly pull up the corresponding patient record.</p>
+          <p>Upload barcode images to keep a list of detected code numbers.</p>
         </div>
       </div>
 
-      {/* Hidden container required for html5-qrcode scanning */}
-      <div id="hidden-scanner-container" style={{ display: 'none' }}></div>
-
-      <div className="export-filters-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem', marginTop: '2rem' }}>
-        
-        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📷</div>
-          <h3 style={{ color: '#1e293b' }}>Upload Barcode Image</h3>
-          <p style={{ color: '#64748b' }}>Supports PNG, JPG, and JPEG formats.</p>
-        </div>
-
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px' }}>
         <button 
           onClick={() => fileInputRef.current?.click()}
           disabled={isScanning}
           style={{
-            display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 2rem', 
-            background: '#4f46e5', color: 'white', border: 'none', borderRadius: '9px', 
-            fontSize: '1rem', fontWeight: 'bold', cursor: isScanning ? 'not-allowed' : 'pointer',
-            opacity: isScanning ? 0.7 : 1, transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)'
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', 
+            background: '#4f46e5', color: 'white', border: 'none', borderRadius: '5px', 
+            fontSize: '16px', fontWeight: 'bold', cursor: isScanning ? 'not-allowed' : 'pointer',
+            opacity: isScanning ? 0.7 : 1
           }}
         >
-          {isScanning ? 'Scanning...' : 'Select Barcode Image'}
+          {isScanning ? 'Scanning...' : '📷 Upload Barcode'}
         </button>
+        <span style={{ color: '#64748b' }}>Supports PNG, JPG, and JPEG</span>
         <input 
           type="file" 
           accept="image/*" 
+          multiple
           ref={fileInputRef} 
           style={{ display: 'none' }} 
           onChange={handleBarcodeUpload}
         />
       </div>
 
-      {scannedResult && (
-        <div className="export-filters-card" style={{ marginTop: '2rem' }}>
-           <h3 style={{ color: '#1e293b', marginBottom: '1.5rem', fontSize: '1.25rem' }}>
-             Scan Result: <span style={{ color: '#4f46e5', background: 'rgba(79, 70, 229, 0.1)', padding: '4px 12px', borderRadius: '6px' }}>{scannedResult}</span>
-           </h3>
-           
-           {matchedRecord ? (
-             <div className="table-responsive-wrapper" style={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
-                <table className="submissions-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr style={{ background: '#f1f5f9' }}>
-                      <th style={{ padding: '10px 15px', borderBottom: '1px solid #cbd5e1' }}>IP Address</th>
-                      <th style={{ padding: '10px 15px', borderBottom: '1px solid #cbd5e1' }}>Patient Name</th>
-                      <th style={{ padding: '10px 15px', borderBottom: '1px solid #cbd5e1' }}>Age</th>
-                      <th style={{ padding: '10px 15px', borderBottom: '1px solid #cbd5e1' }}>Intake Date</th>
-                      <th style={{ padding: '10px 15px', borderBottom: '1px solid #cbd5e1' }}>Category</th>
-                      <th style={{ padding: '10px 15px', borderBottom: '1px solid #cbd5e1' }}>Gender</th>
-                      <th style={{ padding: '10px 15px', borderBottom: '1px solid #cbd5e1' }}>Created By</th>
+      <div style={{ marginBottom: '30px', maxWidth: '400px' }}>
+        <label style={{ display: 'block', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>Or scan with physical scanner:</label>
+        <input 
+          type="text" 
+          value={manualCode}
+          onChange={(e) => setManualCode(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Click here and scan barcode..."
+          style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '16px' }}
+        />
+        <small style={{ color: '#64748b', display: 'block', marginTop: '5px' }}>Press Enter to add to list.</small>
+      </div>
+
+      {scannedResults.length > 0 && (() => {
+        const maxColumns = Math.max(1, ...scannedResults.map(r => r.length));
+        return (
+          <div style={{ overflowX: 'auto' }}>
+            <table border="1" cellPadding="10" style={{ borderCollapse: 'collapse', width: '100%', minWidth: '400px', textAlign: 'left', background: 'white', border: '1px solid #cbd5e1' }}>
+              <thead>
+                <tr style={{ background: '#f1f5f9' }}>
+                  <th style={{ width: '80px', borderBottom: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1' }}>SNO</th>
+                  {Array.from({ length: maxColumns }).map((_, i) => (
+                    <th key={i} style={{ borderBottom: '1px solid #cbd5e1', borderRight: i < maxColumns - 1 ? '1px solid #cbd5e1' : 'none' }}>
+                      Barcode {i + 1}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                  {scannedResults.map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      <td style={{ fontWeight: 'bold', color: '#64748b', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #e2e8f0' }}>{rowIndex + 1}</td>
+                      {Array.from({ length: maxColumns }).map((_, colIndex) => (
+                        <td key={colIndex} style={{ color: '#4f46e5', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', borderRight: colIndex < maxColumns - 1 ? '1px solid #cbd5e1' : 'none' }}>
+                          {row[colIndex] || ''}
+                        </td>
+                      ))}
                     </tr>
-                  </thead>
-                  <tbody>
-                      <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '10px 15px' }}>{matchedRecord.ipNo}</td>
-                        <td style={{ padding: '10px 15px', fontWeight: 'bold' }}>{matchedRecord.name}</td>
-                        <td style={{ padding: '10px 15px' }}>{matchedRecord.age} Yrs</td>
-                        <td style={{ padding: '10px 15px' }}>{formatDateToDDMMYYYY(matchedRecord.date)}</td>
-                        <td style={{ padding: '10px 15px' }}>{matchedRecord.recordType}</td>
-                        <td style={{ padding: '10px 15px' }}>{matchedRecord.gender}</td>
-                        <td style={{ padding: '10px 15px' }}>{matchedRecord.createdBy || 'System'}</td>
-                      </tr>
-                  </tbody>
-                </table>
-              </div>
-           ) : (
-             <div className="empty-state" style={{ padding: '2rem', textAlign: 'center', border: '1px dashed #cbd5e1', borderRadius: '12px', background: '#f8fafc' }}>
-                <p style={{ color: '#ef4444', fontSize: '1rem', fontWeight: 'bold', margin: 0 }}>No matching patient record found in the database.</p>
-             </div>
-           )}
-        </div>
-      )}
+                  ))}
+              </tbody>
+            </table>
+            <div style={{ marginTop: '20px', textAlign: 'right' }}>
+              <button 
+                onClick={handleSaveToDatabase}
+                disabled={isSaving}
+                style={{
+                  background: '#10b981', color: 'white', border: 'none', borderRadius: '5px', 
+                  padding: '10px 24px', fontSize: '16px', fontWeight: 'bold', 
+                  cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1
+                }}
+              >
+                {isSaving ? 'Saving...' : '💾 Save to Database'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

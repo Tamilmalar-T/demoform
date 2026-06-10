@@ -45,6 +45,16 @@ const patientSchema = new mongoose.Schema({
 
 const Patient = mongoose.model("Patient", patientSchema);
 
+const barcodeSchema = new mongoose.Schema({
+  barcodes: [mongoose.Schema.Types.Mixed], 
+  fileName: String,
+  fileSize: String,
+  fileUrl: String,
+  createdBy: String,
+  createdAt: { type: Date, default: Date.now },
+}, { timestamps: true });
+
+const BarcodeRecord = mongoose.model("BarcodeRecord", barcodeSchema);
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
@@ -799,18 +809,113 @@ app.post("/api/chat/upload", upload.single("file"), async (req, res) => {
         console.error("Google Drive upload failed for chat file, using local fallback:", driveErr.message);
       }
     }
-
-    res.json({
-      success: true,
-      fileUrl,
-      fileName: req.file.originalname,
-      fileSize: (req.file.size / 1024 / 1024).toFixed(2) + " MB"
-    });
-  } catch (err) {
-    console.error("Chat file upload error:", err);
-    res.status(500).json({ success: false, message: "Upload failed" });
+    
+    // Save record to DB if needed (Assuming you just return the URL for now)
+    res.json({ success: true, fileUrl, message: "Chat file uploaded successfully." });
+  } catch (error) {
+    console.error("Chat file upload error:", error);
+    res.status(500).json({ success: false, message: "Failed to upload chat file" });
   }
 });
+
+// ================= BARCODE UPLOAD API =================
+app.post(
+  "/api/barcodes/upload",
+  upload.array("files", 20),
+  async (req, res) => {
+    try {
+      const drive = google.drive({
+        version: "v3",
+        auth: global.auth,
+      });
+
+      const barcodesData = JSON.parse(req.body.barcodes || "[]");
+      
+      const mainFolderId = "1BnPsJbEzFhlKYmV4hUnutb3-HwDUwkRp"; // Same root folder
+      const date = new Date();
+      const currentYear = date.getFullYear().toString();
+      const currentMonth = date.toLocaleString('default', { month: 'long' });
+      
+      let barcodeFolderId = null;
+      let useLocalFallback = false;
+
+      try {
+        const yearFolderId = await getOrCreateFolder(drive, currentYear, mainFolderId);
+        const monthFolderId = await getOrCreateFolder(drive, currentMonth, yearFolderId);
+        barcodeFolderId = await getOrCreateFolder(drive, "Barcodes", monthFolderId);
+      } catch (err) {
+        console.error("Drive connection failed for barcodes:", err.message);
+        useLocalFallback = true;
+      }
+
+      const savedRecords = [];
+
+      // If there are files, upload them
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const fileExt = path.extname(file.originalname);
+          const newFileName = `Barcode-${Date.now()}${fileExt}`;
+          try {
+            if (useLocalFallback) throw new Error("Local fallback");
+
+            const response = await drive.files.create({
+              requestBody: { name: newFileName, parents: [barcodeFolderId] },
+              media: { mimeType: file.mimetype, body: fs.createReadStream(file.path) },
+              supportsAllDrives: true
+            });
+
+            await drive.permissions.create({
+              fileId: response.data.id,
+              requestBody: { role: "reader", type: "anyone" },
+              supportsAllDrives: true
+            });
+
+            const fileUrl = `https://drive.google.com/uc?id=${response.data.id}`;
+            const newRecord = new BarcodeRecord({
+              barcodes: barcodesData,
+              fileName: newFileName,
+              fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
+              fileUrl,
+              createdBy: "System",
+            });
+            const saved = await newRecord.save();
+            savedRecords.push(saved);
+            fs.unlinkSync(file.path);
+          } catch(err) {
+             const fileUrl = `http://localhost:${process.env.PORT || 5000}/uploads/${file.filename}`;
+             const newRecord = new BarcodeRecord({
+              barcodes: barcodesData,
+              fileName: newFileName,
+              fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
+              fileUrl,
+              createdBy: "System",
+            });
+            const saved = await newRecord.save();
+            savedRecords.push(saved);
+          }
+        }
+      } else {
+        // Just save data without file
+        const newRecord = new BarcodeRecord({
+          barcodes: barcodesData,
+          fileName: "No File",
+          fileSize: "0 MB",
+          fileUrl: "",
+          createdBy: "System",
+        });
+        const saved = await newRecord.save();
+        savedRecords.push(saved);
+      }
+
+      res.status(200).json({ success: true, message: "Barcodes saved successfully", records: savedRecords });
+
+    } catch (err) {
+      console.error("Barcode upload error:", err);
+      res.status(500).json({ success: false, message: "Failed to upload barcodes" });
+    }
+  }
+);
+
 
 
 // ================= AUTH API =================
