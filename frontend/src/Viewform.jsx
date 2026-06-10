@@ -53,17 +53,12 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
 
   const AGE_RANGES = [
     { label: 'All Ages', value: 'All' },
+    { label: '0 – 1', value: '0-1' },
     { label: '0 – 5', value: '0-5' },
-    { label: '6 – 10', value: '6-10' },
-    { label: '11 – 20', value: '11-20' },
-    { label: '21 – 30', value: '21-30' },
-    { label: '31 – 40', value: '31-40' },
-    { label: '41 – 50', value: '41-50' },
-    { label: '51 – 60', value: '51-60' },
-    { label: '61 – 70', value: '61-70' },
-    { label: '71 – 80', value: '71-80' },
-    { label: '81 – 90', value: '81-90' },
-    { label: '91 – 100', value: '91-100' },
+    { label: '6 – 18', value: '6-18' },
+    { label: '18 above', value: '18+' },
+    { label: '60 above', value: '60+' },
+   
   ];
 
   const allTypes = ['All', ...Array.from(new Set(records.map(r => r.recordType).filter(Boolean)))];

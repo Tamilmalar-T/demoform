@@ -526,6 +526,10 @@
   color: rgba(0, 0, 0, 0.1);
 }
 
+.mobile-only-btn {
+  display: none !important;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .app-container {
@@ -597,6 +601,10 @@
 
   .stats-bar > .stat-card {
     grid-column: span 2;
+  }
+
+  .mobile-only-btn {
+    display: flex !important;
   }
 
   .stats-bar > .nav-btn {

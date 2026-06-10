@@ -562,10 +562,10 @@ function App() {
                       <polyline points="17 8 12 3 7 8" />
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
-                    <span className="nav-text">Export</span>
+                    <span className="nav-text">Bar code</span>
                   </button>
                   <button
-                    className={`nav-btn ${showNotifications ? 'active' : ''}`}
+                    className={`nav-btn mobile-only-btn ${showNotifications ? 'active' : ''}`}
                     onClick={() => {
                       setActiveTab('form');
                       setShowNotifications(!showNotifications);

@@ -524,6 +524,56 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
               </svg>
             </button>
 
+            {/* Desktop-only Notification Bell */}
+            <button
+              type="button"
+              className="bell-trigger-btn desktop-only-btn"
+              onClick={() => setShowNotifications(!showNotifications)}
+              style={{
+                background: 'transparent',
+                cursor: 'pointer',
+                position: 'relative',
+                padding: '10px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: showNotifications ? 'var(--primary)' : '#64748b',
+                backgroundColor: showNotifications ? 'var(--primary-glow, rgba(79, 70, 229, 0.08))' : 'rgba(248, 250, 252, 0.8)',
+                border: '1px solid #e2e8f0',
+                transition: 'all 0.2s ease',
+                width: '48px',
+                height: '48px'
+              }}
+              title="Access Pending Client Requests"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="24" height="24">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              {requests.filter(r => r.status === 'pending').length > 0 && (
+                <span className="bell-badge" style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-4px',
+                  background: '#ef4444',
+                  color: 'white',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  borderRadius: '99px',
+                  minWidth: '22px',
+                  height: '22px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid white',
+                  boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                }}>
+                  {requests.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </button>
+
           </div>
 
           <div className="completeness-indicator" style={{ display: 'flex', alignItems: 'center' }}>
