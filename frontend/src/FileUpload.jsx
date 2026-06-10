@@ -5,8 +5,7 @@ import './FileUpload.css';
 import { API_URL } from './config';
 import * as XLSX from 'xlsx';
 
-function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setRequests, existingRecords = [] }) {
-  const [showNotifications, setShowNotifications] = useState(false);
+function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setRequests, existingRecords = [], showNotifications, setShowNotifications }) {
   const [formData, setFormData] = useState({
     ipNo: '',
     name: '',
@@ -473,15 +472,16 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
   };
 
   return (
-    <Row className="g-4 align-items-start" style={{ transition: 'all 0.3s ease' }}>
+    <Row className="py-0 align-items-start" style={{ transition: 'all 0.3s ease' }}>
       <Col lg={showNotifications ? 7 : 12} className="request-form-card p-4">
         <div className="form-card-header" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div className="header-info" style={{ flex: '1 1 300px' }}>
+          <div className="header-info" style={{ flex: '1 1 0px' }}>
             <h2>Patient Record Uplode</h2>
             <p>Please enter details accurately to sync with the digital diagnostic records.</p>
           </div>
 
-          {/* Dynamic Notification Bell System */}
+          <div className="header-controls" style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
+            {/* Dynamic Notification Bell System */}
           <div className="notification-bell-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', zIndex: 99 }}>
             {/* Hidden Excel File Input */}
             <input
@@ -510,8 +510,8 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                 backgroundColor: 'rgba(248, 250, 252, 0.8)',
                 border: '1px solid #e2e8f0',
                 transition: 'all 0.2s ease',
-                width: '44px',
-                height: '44px',
+                width: '34px',
+                height: '34px',
                 marginRight: '8px'
               }}
               title="Import Patient Details from Excel"
@@ -524,76 +524,28 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
               </svg>
             </button>
 
-            <button
-              type="button"
-              className="bell-trigger-btn"
-              onClick={() => setShowNotifications(!showNotifications)}
-              style={{
-                background: 'transparent',
-                cursor: 'pointer',
-                position: 'relative',
-                padding: '10px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: showNotifications ? 'var(--primary)' : '#64748b',
-                backgroundColor: showNotifications ? 'var(--primary-glow, rgba(79, 70, 229, 0.08))' : 'rgba(248, 250, 252, 0.8)',
-                border: '1px solid #e2e8f0',
-                transition: 'all 0.2s ease',
-                width: '44px',
-                height: '44px'
-              }}
-              title="Access Pending Client Requests"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="22" height="22">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              {requests.filter(r => r.status === 'pending').length > 0 && (
-                <span className="bell-badge" style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  background: '#ef4444',
-                  color: 'white',
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  borderRadius: '99px',
-                  minWidth: '20px',
-                  height: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid white',
-                  boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
-                }}>
-                  {requests.filter(r => r.status === 'pending').length}
-                </span>
-              )}
-            </button>
-
           </div>
 
           <div className="completeness-indicator" style={{ display: 'flex', alignItems: 'center' }}>
             <div className="progress-ring-container">
-              <svg className="progress-ring" width="56" height="56">
-                <circle className="progress-ring__circle-bg" strokeWidth="4" fill="transparent" r="24" cx="28" cy="28" />
+              <svg className="progress-ring" width="42" height="42">
+                <circle className="progress-ring__circle-bg" strokeWidth="3" fill="transparent" r="18" cx="21" cy="21" />
                 <circle
                   className="progress-ring__circle"
-                  strokeWidth="4"
-                  strokeDasharray={`${2 * Math.PI * 24}`}
-                  strokeDashoffset={`${2 * Math.PI * 24 - (completeness / 100) * (2 * Math.PI * 24)}`}
+                  strokeWidth="3"
+                  strokeDasharray={`${2 * Math.PI * 18}`}
+                  strokeDashoffset={`${2 * Math.PI * 18 - (completeness / 100) * (2 * Math.PI * 18)}`}
                   strokeLinecap="round"
                   fill="transparent"
-                  r="24"
-                  cx="28"
-                  cy="28"
+                  r="18"
+                  cx="21"
+                  cy="21"
                 />
               </svg>
               <span className="progress-percentage">{completeness}%</span>
             </div>
             <span className="completeness-label">Complete</span>
+          </div>
           </div>
         </div>
 

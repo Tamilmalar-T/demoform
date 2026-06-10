@@ -81,6 +81,7 @@ function App() {
     return stored ? JSON.parse(stored) : [];
   });
   const [showSessionDetails, setShowSessionDetails] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [activeDuration, setActiveDuration] = useState('');
@@ -395,29 +396,23 @@ function App() {
               <div className="app-container full-width">
                 {/* Premium Header - Always Visible */}
                 <header className="main-header">
-                  <div className="header-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="header-brand-container">
                     <div className="header-brand">
-                      <div className="brand-logo">
-                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#4f46e5' }}></div>
+                      <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg, #4f46e5, #8b5cf6)', color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>
+                        🩺
+                      </div>
+                      <div className="brand-text">
+                        <div className="brand-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1e293b', whiteSpace: 'nowrap' }}>Guru Shree MRD</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Hamburger menu button — next to logo */}
+                    {/* Hamburger menu button */}
                     <button
+                      className="hamburger-btn"
                       onClick={() => setShowSidebar(true)}
                       title="Open menu"
-                      style={{
-                        width: 36, height: 36,
-                        borderRadius: 9,
-                        border: '1px solid #e2e8f0',
-                        background: '#f8fafc',
-                        color: '#475569',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="17" height="17">
                         <line x1="3" y1="6" x2="21" y2="6" strokeLinecap="round" />
@@ -434,30 +429,16 @@ function App() {
 
                   </nav>
 
-                  <div className="header-auth" style={{ display: 'flex', alignItems: 'center', gap: '15px', position: 'relative' }}>
+                  <div className="header-auth">
                     <button
+                      className="view-accounts-btn"
                       onClick={() => navigate('/accounts')}
-                      style={{
-                        background: 'rgba(99, 102, 241, 0.1)',
-                        color: '#6366f1',
-                        border: '1px solid rgba(99, 102, 241, 0.2)',
-                        padding: '8px 14px',
-                        borderRadius: '10px',
-                        fontWeight: '700',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        boxShadow: '0 2px 4px rgba(99, 102, 241, 0.05)',
-                        transition: 'all 0.2s'
-                      }}
                     >
-                      🔑 View Accounts
+                    View Account
                     </button>
                     {currentSession && (
-                      <span style={{ color: '#475569', fontSize: '14px', fontWeight: '600', background: '#f8fafc', padding: '6px 12px', borderRadius: '15px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        👤<span style={{ color: '#4f46e5', fontWeight: 'bold' }}>{currentSession.loginId}</span>
+                      <span className="user-session-badge">
+                        <span className="user-session-name">👤<span>{currentSession.loginId}</span></span>
                         <div className="brand-text">
                           <div className="brand-title-row">
                             {isOffline ? (
@@ -465,8 +446,8 @@ function App() {
                                 <span className="dot animate-pulse-slow"></span> LOCAL MODE
                               </span>
                             ) : (
-                              <span className="status-badge online" title="Online Mode - Connected to MongoDB" style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid #bbf7d0' }}>
-                                <span className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }}></span>
+                              <span className="status-badge online" title="Online Mode - Connected to MongoDB">
+                                <span className="dot"></span>
                               </span>
                             )}
                           </div>
@@ -478,7 +459,6 @@ function App() {
                       className="user-avatar-btn"
                       title="User Profile"
                       onClick={() => setShowDropdown(!showDropdown)}
-                      style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '50%', color: '#4f46e5' }}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -560,7 +540,7 @@ function App() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    New Entry
+                    <span className="nav-text">New Entry</span>
                   </button>
 
                   <button
@@ -570,7 +550,7 @@ function App() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Document Uploded List
+                    <span className="nav-text">Document Uploded List</span>
                     {records.length > 0 && <span className="badge">{records.length}</span>}
                   </button>
                   <button
@@ -582,7 +562,26 @@ function App() {
                       <polyline points="17 8 12 3 7 8" />
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
-                    Export
+                    <span className="nav-text">Export</span>
+                  </button>
+                  <button
+                    className={`nav-btn ${showNotifications ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveTab('form');
+                      setShowNotifications(!showNotifications);
+                    }}
+                    title="Notifications"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="22" height="22">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span className="nav-text">Notifications</span>
+                    {requests.filter(r => r.status === 'pending').length > 0 && (
+                      <span className="badge" style={{ background: '#ef4444' }}>
+                        {requests.filter(r => r.status === 'pending').length}
+                      </span>
+                    )}
                   </button>
                 </section>
 
@@ -595,6 +594,8 @@ function App() {
                       requests={requests}
                       setRequests={setRequests}
                       existingRecords={records}
+                      showNotifications={showNotifications}
+                      setShowNotifications={setShowNotifications}
                     />
                   ) : activeTab === 'view' ? (
                     <Viewform
