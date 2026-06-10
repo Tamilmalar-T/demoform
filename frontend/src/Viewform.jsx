@@ -473,12 +473,12 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
               </thead>
               <tbody>
                 {groupedRecords.map((group) => (
-                  <tr key={group.id || group._id} className="record-row" style={records.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
+                  <tr key={group.id || group._id} className="record-row" style={groupedRecords.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
 
                     {/* IP column */}
                     <td>
                       <code className="ip-badge">{group.ipNo}</code>
-                      {records.filter(r => r.ipNo === group.ipNo).length > 1 && (
+                      {groupedRecords.filter(r => r.ipNo === group.ipNo).length > 1 && (
                         <span style={{
                           color: '#ef4444',
                           fontSize: '10px',
@@ -616,7 +616,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
           {/* Mobile-only Premium Card Grid */}
           <div className="mobile-cards-wrapper mobile-only">
             {groupedRecords.map((group) => (
-              <div key={group.id || group._id} className="mobile-record-card" style={records.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
+              <div key={group.id || group._id} className="mobile-record-card" style={groupedRecords.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
                 <div className="card-header-row">
                   <div className="patient-avatar-name">
                     <div className="avatar-placeholder">
@@ -626,7 +626,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                       <span className="patient-name">{group.name}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <code className="ip-badge">{group.ipNo}</code>
-                        {records.filter(r => r.ipNo === group.ipNo).length > 1 && (
+                        {groupedRecords.filter(r => r.ipNo === group.ipNo).length > 1 && (
                           <span style={{
                             color: '#ef4444',
                             fontSize: '9px',
@@ -737,7 +737,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
               <Col xs={12} sm={6} md={4} className="grid-item">
                 <span className="grid-label">IP No</span>
                 <code className="grid-value ip-code">{selectedRecord.ipNo}</code>
-                {records.filter(r => r.ipNo === selectedRecord.ipNo).length > 1 && (
+                {groupedRecords.filter(r => r.ipNo === selectedRecord.ipNo).length > 1 && (
                   <span style={{
                     color: '#ef4444',
                     fontSize: '10px',
@@ -926,9 +926,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
             <div className="modal-footer-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
               {!isEditing ? (
                 <>
-                  <button className="btn-edit-modal" onClick={() => setIsEditing(true)} style={{ background: '#4f46e5', color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
-                    ✏️ Edit Files
-                  </button>
+               
                   <button className="btn-close-modal" onClick={handleCloseModal} style={{ background: '#e2e8f0', color: '#475569', padding: '10px 20px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
                     Dismiss Record View
                   </button>

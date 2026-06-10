@@ -510,14 +510,14 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                 backgroundColor: 'rgba(248, 250, 252, 0.8)',
                 border: '1px solid #e2e8f0',
                 transition: 'all 0.2s ease',
-                width: '34px',
-                height: '34px',
+                width: '48px',
+                height: '48px',
                 marginRight: '8px'
               }}
               title="Import Patient Details from Excel"
             >
 
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" style={{ marginRight: '6px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="24" height="24">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
                 <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
                 <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round" />

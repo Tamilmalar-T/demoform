@@ -54,6 +54,10 @@
   background: rgba(79, 70, 229, 0.4);
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-sans);
   background: #f8fafc;

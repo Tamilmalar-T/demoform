@@ -10,7 +10,7 @@ const nowStr = () =>
 
 const EMPTY_FORM = {
   id: '', employeeName: '', designation: '', userType: '',
-  username: '', password: '', department: '',
+  username: '', password: '',
   role: ROLES[0], phone: '', email: '', photo: '',
 };
 
@@ -23,9 +23,7 @@ export default function UsersPanel() {
     JSON.parse(localStorage.getItem('medflow_user_types_v1') || '[]')
   );
 
-  const [availableDepartments] = useState(() =>
-    JSON.parse(localStorage.getItem('medflow_departments_v2') || '[]').map(d => d.name)
-  );
+
 
   // 'hidden' | 'add' | 'edit'
   const [formMode, setFormMode] = useState('hidden');
@@ -51,7 +49,7 @@ export default function UsersPanel() {
     setForm({ 
       ...EMPTY_FORM, 
       userType: availableUserTypes.length > 0 ? availableUserTypes[0].name : '',
-      department: availableDepartments.length > 0 ? availableDepartments[0] : ''
+     
     });
     setPhotoPreview('');
     setEditIndex(null);
@@ -65,8 +63,8 @@ export default function UsersPanel() {
     setForm({ 
       ...EMPTY_FORM, 
       ...u,
-      userType: u.userType || (availableUserTypes.length > 0 ? availableUserTypes[0].name : ''),
-      department: u.department || (availableDepartments.length > 0 ? availableDepartments[0] : '')
+      userType: u.userType || (availableUserTypes.length > 0 ? availableUserTypes[0].name : '')
+ 
     });
     setPhotoPreview(u.photo || '');
     setEditIndex(idx);
@@ -145,7 +143,7 @@ export default function UsersPanel() {
   };
 
   const filtered = users.filter(u =>
-    [u.username, u.email, u.department, u.role, u.employeeName, u.designation, u.userType]
+    [u.username, u.email, u.role, u.employeeName, u.designation, u.userType]
       .join(' ').toLowerCase().includes(search.toLowerCase())
   );
 
@@ -195,7 +193,7 @@ export default function UsersPanel() {
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           id="user-search"
-          placeholder="🔍  Search by name, email, department…"
+          placeholder="🔍  Search by name, email,"
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
@@ -318,13 +316,7 @@ export default function UsersPanel() {
                 </select>
               </div>
 
-              {/* Role */}
-              <div>
-                <label style={labelStyle}>System Role</label>
-                <select id="field-role" value={form.role} onChange={setField('role')} style={inp('')}>
-                  {ROLES.map(r => <option key={r}>{r}</option>)}
-                </select>
-              </div>
+     
 
               {/* Username */}
               <div>
@@ -340,14 +332,7 @@ export default function UsersPanel() {
                 {errors.password && <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: 3 }}>⚠ {errors.password}</div>}
               </div>
 
-              {/* Department */}
-              <div>
-                <label style={labelStyle}>Department</label>
-                <select id="field-department" value={form.department} onChange={setField('department')} style={inp('')}>
-                  {availableDepartments.length === 0 && <option value="">No departments found</option>}
-                  {availableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
+
 
               {/* Phone */}
               <div>
@@ -410,7 +395,7 @@ export default function UsersPanel() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr>
-                {['Photo', 'ID', 'Emp. Name', 'Designation', 'User Type', 'Username', 'Sys Role', 'Department', 'Phone', 'Email', 'Created', 'Updated', 'Actions'].map(h => (
+                {['Photo', 'ID', 'Emp. Name', 'Designation', 'User Type', 'Username', 'Phone', 'Email', 'Created', 'Updated', 'Actions'].map(h => (
                   <th key={h} style={{
                     background: '#f8fafc', padding: '10px 14px',
                     borderBottom: '1px solid #e2e8f0', textAlign: 'left',
@@ -460,8 +445,7 @@ export default function UsersPanel() {
                       <div style={{ fontWeight: 600, color: '#475569' }}>{u.username}</div>
                       <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>{'•'.repeat(Math.min(u.password?.length || 4, 8))}</div>
                     </td>
-                    <td style={td}><span style={roleBadge(u.role)}>{u.role}</span></td>
-                    <td style={td}>{u.department}</td>
+                    
                     <td style={td}>{u.phone || <span style={{ color: '#cbd5e1' }}>—</span>}</td>
                     <td style={td}>
                       <a href={`mailto:${u.email}`} style={{ color: '#4f46e5', textDecoration: 'none', fontSize: '0.8rem' }}>{u.email}</a>
