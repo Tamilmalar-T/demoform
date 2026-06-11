@@ -181,7 +181,7 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
   const validate = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Patient name is required';
-    if (!formData.ipNo.trim()) newErrors.ipNo = 'IP Address is required';
+    if (!formData.ipNo.trim()) newErrors.ipNo = 'IP Number is required';
     if (!formData.age) newErrors.age = 'Age is required';
     if (!formData.gender) newErrors.gender = 'Please select patient gender';
     if (!formData.recordType) newErrors.recordType = 'Please select a record category';

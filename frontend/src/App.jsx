@@ -223,7 +223,7 @@ function App() {
   };
 
   // Stats calculation
-  const totalSubmissions = records.length;
+  const totalSubmissions = new Set(records.map(r => r.ipNo)).size;
 
   const recentActivity = records.length > 0 ? records[0].name : 'No submissions yet';
 
@@ -264,34 +264,37 @@ function App() {
     localStorage.removeItem('medflow_currentSession');
   };
 
-  // Auto-logout after 5 minutes of inactivity
+  // Auto-logout after 15 minutes of inactivity
   const latestLogout = useRef(handleLogout);
+  const latestDeptLogout = useRef(handleDeptLogout);
   useEffect(() => {
     latestLogout.current = handleLogout;
-  }, [handleLogout]);
+    latestDeptLogout.current = handleDeptLogout;
+  }, [handleLogout, handleDeptLogout]);
 
   useEffect(() => {
     let timeoutId;
     const resetTimer = () => {
       clearTimeout(timeoutId);
-      if (isLoggedIn) {
+      if (isLoggedIn || isDeptLoggedIn) {
         timeoutId = setTimeout(() => {
-          alert("You have been logged out automatically due to 5 minutes of inactivity.");
-          latestLogout.current(true);
-        }, 120 * 60 * 1000); // 5 minutes
+          alert("You have been logged out automatically due to 15 minutes of inactivity.");
+          if (isLoggedIn) latestLogout.current(true);
+          if (isDeptLoggedIn) latestDeptLogout.current();
+        }, 15 * 60 * 1000); // 15 minutes
       }
     };
 
-    if (isLoggedIn) {
+    if (isLoggedIn || isDeptLoggedIn) {
       resetTimer();
-      const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+      const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'visibilitychange'];
       events.forEach(e => window.addEventListener(e, resetTimer));
       return () => {
         clearTimeout(timeoutId);
         events.forEach(e => window.removeEventListener(e, resetTimer));
       };
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, isDeptLoggedIn]);
 
 
 
@@ -551,7 +554,7 @@ function App() {
                       <path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     <span className="nav-text">Document Uploded List</span>
-                    {records.length > 0 && <span className="badge">{records.length}</span>}
+                    {totalSubmissions > 0 && <span className="badge">{totalSubmissions}</span>}
                   </button>
                   <button
                     className={`nav-btn ${activeTab === 'export' ? 'active' : ''}`}

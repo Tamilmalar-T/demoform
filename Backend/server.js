@@ -55,8 +55,48 @@ const barcodeSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const BarcodeRecord = mongoose.model("BarcodeRecord", barcodeSchema);
+
+const userProfileSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  employeeName: String,
+  designation: String,
+  userType: String,
+  username: { type: String, required: true },
+  password: { type: String, required: true },
+  phone: String,
+  email: { type: String, required: true },
+  photo: String,
+  createdBy: String,
+  createdOn: String,
+  updatedBy: String,
+  updatedOn: String,
+});
+const UserProfile = mongoose.model("UserProfile", userProfileSchema);
+
+const departmentSchema = new mongoose.Schema({
+  code: { type: String, required: true },
+  name: { type: String, required: true },
+  type: String,
+  createdBy: String,
+  createdOn: String,
+  updatedBy: String,
+  updatedOn: String,
+});
+const Department = mongoose.model("Department", departmentSchema);
+
+const userTypeSchema = new mongoose.Schema({
+  code: { type: String, required: true },
+  name: { type: String, required: true },
+  description: String,
+  createdBy: String,
+  createdOn: String,
+  updatedBy: String,
+  updatedOn: String,
+});
+const UserType = mongoose.model("UserType", userTypeSchema);
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use("/uploads", express.static("uploads"));
 
 app.get("/", (req, res) => {
@@ -199,6 +239,7 @@ function getAccessToken(oAuth2Client, callback) {
 
   console.log("\n=======================================================");
   console.log("Opening your browser to authorize the app automatically...");
+  console.log("If the window doesn't open, click this link:\n" + authUrl);
   console.log("=======================================================\n");
 
   const server = http.createServer((req, res) => {
@@ -364,10 +405,12 @@ app.post(
       });
 
       // Resolve Folder Structure
-      const mainFolderId = "1BnPsJbEzFhlKYmV4hUnutb3-HwDUwkRp";
+      const mainFolderId = "1Nd0Tc8igvhB5Y7N_eWo_2sMoSxr4sl8y";
       const intakeDate = req.body.date ? new Date(req.body.date) : new Date();
-      const currentYear = intakeDate.getFullYear().toString();
-      const currentMonth = intakeDate.toLocaleString('default', { month: 'long' });
+      const validDate = isNaN(intakeDate.getTime()) ? new Date() : intakeDate;
+      const currentYear = validDate.getFullYear().toString();
+      const currentMonth = validDate.toLocaleString('default', { month: 'long' });
+      const currentDateStr = req.body.date ? req.body.date : validDate.toISOString().split('T')[0];
       const patientName = req.body.name ? req.body.name.trim() : "Unknown_Patient";
       const ipNo = req.body.ipNo ? req.body.ipNo.trim() : "NoIP";
       const patientFolderName = `${ipNo}-${patientName}`;
@@ -378,7 +421,8 @@ app.post(
       try {
         const yearFolderId = await getOrCreateFolder(drive, currentYear, mainFolderId);
         const monthFolderId = await getOrCreateFolder(drive, currentMonth, yearFolderId);
-        patientFolderId = await getOrCreateFolder(drive, patientFolderName, monthFolderId);
+        const dateFolderId = await getOrCreateFolder(drive, currentDateStr, monthFolderId);
+        patientFolderId = await getOrCreateFolder(drive, patientFolderName, dateFolderId);
       } catch (err) {
         console.error("Google Drive connection/folder resolution failed:", err.message);
         console.log("Automatically switching to local storage fallback for this submission.");
@@ -473,8 +517,8 @@ app.post(
             <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
               <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Patient Name:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${patientName}</td></tr>
               <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Age / Gender:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${req.body.age} / ${req.body.gender}</td></tr>
-              <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Intake Date:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${req.body.date}</td></tr>
-              <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>IP Address:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${req.body.ipNo}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Discharge Date:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${req.body.date}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>IP Number:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${req.body.ipNo}</td></tr>
               <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Category:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${req.body.recordType}</td></tr>
             </table>
             <h3 style="color: #0f172a; margin-top: 25px;">Uploaded Documents (${savedRecords.length}):</h3>
@@ -486,7 +530,7 @@ app.post(
 
         // Send email in the background without blocking the HTTP response
         sendEmail({
-          to: "tamilmalar520d@gmail.com",
+          to: "gshmrd2627@gmail.com",
           subject: `New Intake: ${patientName} - ${req.body.recordType}`,
           html: emailHTML,
         }).then(() => {
@@ -608,6 +652,114 @@ app.delete("/api/patients/:id", async (req, res) => {
 });
 
 
+
+// ================= ADMIN API ROUTES =================
+
+// Users
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await UserProfile.find().sort({ createdOn: -1 });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.post("/api/users", async (req, res) => {
+  try {
+    const newUser = new UserProfile(req.body);
+    const saved = await newUser.save();
+    res.json(saved);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.put("/api/users/:id", async (req, res) => {
+  try {
+    const updated = await UserProfile.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.delete("/api/users/:id", async (req, res) => {
+  try {
+    await UserProfile.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// Departments
+app.get("/api/departments", async (req, res) => {
+  try {
+    const depts = await Department.find().sort({ createdOn: -1 });
+    res.json(depts);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.post("/api/departments", async (req, res) => {
+  try {
+    const newDept = new Department(req.body);
+    const saved = await newDept.save();
+    res.json(saved);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.put("/api/departments/:id", async (req, res) => {
+  try {
+    const updated = await Department.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.delete("/api/departments/:id", async (req, res) => {
+  try {
+    await Department.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// User Types
+app.get("/api/user-types", async (req, res) => {
+  try {
+    const types = await UserType.find().sort({ createdOn: -1 });
+    res.json(types);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.post("/api/user-types", async (req, res) => {
+  try {
+    const newType = new UserType(req.body);
+    const saved = await newType.save();
+    res.json(saved);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.put("/api/user-types/:id", async (req, res) => {
+  try {
+    const updated = await UserType.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+app.delete("/api/user-types/:id", async (req, res) => {
+  try {
+    await UserType.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
 // Update Patient Files
 app.put("/api/patients/:id/files", upload.array("files", 10), async (req, res) => {
   try {
@@ -643,10 +795,12 @@ app.put("/api/patients/:id/files", upload.array("files", 10), async (req, res) =
     }
 
     // Prepare folder structure for uploads
-    const mainFolderId = "1BnPsJbEzFhlKYmV4hUnutb3-HwDUwkRp";
+    const mainFolderId = "1Nd0Tc8igvhB5Y7N_eWo_2sMoSxr4sl8y";
     const intakeDate = patient.date ? new Date(patient.date) : new Date();
-    const currentYear = intakeDate.getFullYear().toString();
-    const currentMonth = intakeDate.toLocaleString('default', { month: 'long' });
+    const validDate = isNaN(intakeDate.getTime()) ? new Date() : intakeDate;
+    const currentYear = validDate.getFullYear().toString();
+    const currentMonth = validDate.toLocaleString('default', { month: 'long' });
+    const currentDateStr = patient.date ? patient.date : validDate.toISOString().split('T')[0];
     const patientName = patient.name ? patient.name.trim() : "Unknown_Patient";
     const ipNo = patient.ipNo ? patient.ipNo.trim() : "NoIP";
     const patientFolderName = `${ipNo}-${patientName}`;
@@ -657,7 +811,8 @@ app.put("/api/patients/:id/files", upload.array("files", 10), async (req, res) =
     try {
       const yearFolderId = await getOrCreateFolder(drive, currentYear, mainFolderId);
       const monthFolderId = await getOrCreateFolder(drive, currentMonth, yearFolderId);
-      patientFolderId = await getOrCreateFolder(drive, patientFolderName, monthFolderId);
+      const dateFolderId = await getOrCreateFolder(drive, currentDateStr, monthFolderId);
+      patientFolderId = await getOrCreateFolder(drive, patientFolderName, dateFolderId);
     } catch (err) {
       console.error("Google Drive connection/folder resolution failed during PUT:", err.message);
       console.log("Automatically switching to local storage fallback for this update.");
@@ -923,7 +1078,7 @@ const otpStore = new Map();
 
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
-  if (email === "tamilmalar520d@gmail.com" && password === "123") {
+  if (email === "gshmrd2627@gmail.com" && password === "123") {
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000;
     otpStore.set(email, { otp, expiresAt });

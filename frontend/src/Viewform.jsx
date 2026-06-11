@@ -119,7 +119,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
     doc.setFontSize(12);
     doc.text('Clinical Patient Records Database Report', 14, 22);
     doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}  |  Records: ${filteredRecords.length}`, 14, 28);
+    doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}  |  Records: ${groupedRecords.length}`, 14, 28);
 
     autoTable(doc, {
       startY: 33,
@@ -145,7 +145,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
       <body>
         <h3>Guru Shree MRD - Patient Submissions Log</h3>
         <table>
-          <thead><tr><th>IP Address</th><th>Patient Name</th><th>Age</th><th>Date</th><th>Type</th><th>Gender</th><th>Created By</th></tr></thead>
+          <thead><tr><th>IP Number</th><th>Patient Name</th><th>Age</th><th>Date</th><th>Type</th><th>Gender</th><th>Created By</th></tr></thead>
           <tbody>
             ${filteredRecords.map(r => `<tr><td>${r.ipNo || ''}</td><td>${r.name || ''}</td><td>${r.age || ''}</td><td>${r.date || ''}</td><td>${r.recordType || ''}</td><td>${r.gender || ''}</td><td>${r.createdBy || 'System'}</td></tr>`).join('')}
           </tbody>
@@ -368,7 +368,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
           </svg>
           <input
             type="text"
-            placeholder="Search by patient name or IP address..."
+            placeholder="Search by patient name or IP Number..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -978,7 +978,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
         <table className="print-records-table">
           <thead>
             <tr>
-              <th>IP Address</th>
+              <th>IP Number</th>
               <th>Patient Name</th>
               <th>Age</th>
               <th>Date</th>

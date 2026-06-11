@@ -121,7 +121,7 @@ function Requestform({ requests, setRequests, doctorName, department }) {
   const validate = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Patient name is required';
-    if (!formData.ipNo.trim()) newErrors.ipNo = 'IP Address is required';
+    if (!formData.ipNo.trim()) newErrors.ipNo = 'IP Number is required';
     if (!formData.recordType) newErrors.recordType = 'Please select a record category';
     if (!formData.reason.trim()) newErrors.reason = 'Please provide a reason for this request';
     setErrors(newErrors);

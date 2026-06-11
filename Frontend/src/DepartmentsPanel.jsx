@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { API_URL } from './config';
 
 const DEPT_TYPES = ['Clinic', 'Non-Clinic'];
 
@@ -20,9 +21,14 @@ const TYPE_COLORS = {
 };
 
 export default function DepartmentsPanel() {
-  const [departments, setDepartments] = useState(() =>
-    JSON.parse(localStorage.getItem('medflow_departments_v2') || '[]')
-  );
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/departments`)
+      .then(res => res.json())
+      .then(data => setDepartments(data))
+      .catch(err => console.error("Failed to fetch departments", err));
+  }, []);
 
   const [formMode, setFormMode]   = useState('hidden'); // 'hidden' | 'add' | 'edit'
   const [editIndex, setEditIndex] = useState(null);
@@ -35,10 +41,7 @@ export default function DepartmentsPanel() {
     catch { return 'System'; }
   })();
 
-  const persist = (list) => {
-    setDepartments(list);
-    localStorage.setItem('medflow_departments_v2', JSON.stringify(list));
-  };
+  // Persist function removed in favor of API calls
 
   const openAdd = () => {
     setForm({ ...EMPTY_FORM });
@@ -70,33 +73,57 @@ export default function DepartmentsPanel() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     const ts = nowStr();
-    if (formMode === 'add') {
-      persist([{
-        code: form.code.trim().toUpperCase(),
-        name: form.name.trim(),
-        type: form.type,
-        createdBy: currentUser,
-        createdOn: ts,
-        updatedBy: '',
-        updatedOn: '',
-      }, ...departments]);
-    } else {
-      persist(departments.map((d, i) =>
-        i === editIndex
-          ? { ...d, code: form.code.trim().toUpperCase(), name: form.name.trim(), type: form.type, updatedBy: currentUser, updatedOn: ts }
-          : d
-      ));
+    try {
+      if (formMode === 'add') {
+        const payload = {
+          code: form.code.trim().toUpperCase(),
+          name: form.name.trim(),
+          type: form.type,
+          createdBy: currentUser,
+          createdOn: ts,
+          updatedBy: '',
+          updatedOn: '',
+        };
+        const res = await fetch(`${API_URL}/api/departments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Failed to add department");
+        const saved = await res.json();
+        setDepartments([saved, ...departments]);
+      } else {
+        const d = departments[editIndex];
+        const payload = { ...d, code: form.code.trim().toUpperCase(), name: form.name.trim(), type: form.type, updatedBy: currentUser, updatedOn: ts };
+        const res = await fetch(`${API_URL}/api/departments/${d._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Failed to update department");
+        const updated = await res.json();
+        setDepartments(departments.map((dept, i) => i === editIndex ? updated : dept));
+      }
+      closeForm();
+    } catch (err) {
+      alert(err.message);
     }
-    closeForm();
   };
 
-  const handleDelete = (idx) => {
-    if (!window.confirm(`Delete department "${departments[idx].name}"?`)) return;
-    persist(departments.filter((_, i) => i !== idx));
+  const handleDelete = async (idx) => {
+    const d = departments[idx];
+    if (!window.confirm(`Delete department "${d.name}"?`)) return;
+    try {
+      const res = await fetch(`${API_URL}/api/departments/${d._id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error("Failed to delete department");
+      setDepartments(departments.filter((_, i) => i !== idx));
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const setField = (name) => (e) => setForm(f => ({ ...f, [name]: e.target.value }));

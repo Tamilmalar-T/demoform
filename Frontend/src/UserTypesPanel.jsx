@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { API_URL } from './config';
 
 const nowStr = () =>
   new Date().toLocaleString('en-IN', {
@@ -13,9 +14,14 @@ const EMPTY_FORM = {
 };
 
 export default function UserTypesPanel() {
-  const [userTypes, setUserTypes] = useState(() =>
-    JSON.parse(localStorage.getItem('medflow_user_types_v1') || '[]')
-  );
+  const [userTypes, setUserTypes] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/user-types`)
+      .then(res => res.json())
+      .then(data => setUserTypes(data))
+      .catch(err => console.error("Failed to fetch user types", err));
+  }, []);
 
   const [formMode, setFormMode]   = useState('hidden'); // 'hidden' | 'add' | 'edit'
   const [editIndex, setEditIndex] = useState(null);
@@ -28,10 +34,7 @@ export default function UserTypesPanel() {
     catch { return 'System'; }
   })();
 
-  const persist = (list) => {
-    setUserTypes(list);
-    localStorage.setItem('medflow_user_types_v1', JSON.stringify(list));
-  };
+  // Persist function removed in favor of API calls
 
   const openAdd = () => {
     setForm({ ...EMPTY_FORM });
@@ -63,33 +66,57 @@ export default function UserTypesPanel() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     const ts = nowStr();
-    if (formMode === 'add') {
-      persist([{
-        code: form.code.trim().toUpperCase(),
-        name: form.name.trim(),
-        description: form.description.trim(),
-        createdBy: currentUser,
-        createdOn: ts,
-        updatedBy: '',
-        updatedOn: '',
-      }, ...userTypes]);
-    } else {
-      persist(userTypes.map((t, i) =>
-        i === editIndex
-          ? { ...t, code: form.code.trim().toUpperCase(), name: form.name.trim(), description: form.description.trim(), updatedBy: currentUser, updatedOn: ts }
-          : t
-      ));
+    try {
+      if (formMode === 'add') {
+        const payload = {
+          code: form.code.trim().toUpperCase(),
+          name: form.name.trim(),
+          description: form.description.trim(),
+          createdBy: currentUser,
+          createdOn: ts,
+          updatedBy: '',
+          updatedOn: '',
+        };
+        const res = await fetch(`${API_URL}/api/user-types`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Failed to add user type");
+        const saved = await res.json();
+        setUserTypes([saved, ...userTypes]);
+      } else {
+        const t = userTypes[editIndex];
+        const payload = { ...t, code: form.code.trim().toUpperCase(), name: form.name.trim(), description: form.description.trim(), updatedBy: currentUser, updatedOn: ts };
+        const res = await fetch(`${API_URL}/api/user-types/${t._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Failed to update user type");
+        const updated = await res.json();
+        setUserTypes(userTypes.map((type, i) => i === editIndex ? updated : type));
+      }
+      closeForm();
+    } catch (err) {
+      alert(err.message);
     }
-    closeForm();
   };
 
-  const handleDelete = (idx) => {
-    if (!window.confirm(`Delete User Type "${userTypes[idx].name}"?`)) return;
-    persist(userTypes.filter((_, i) => i !== idx));
+  const handleDelete = async (idx) => {
+    const t = userTypes[idx];
+    if (!window.confirm(`Delete User Type "${t.name}"?`)) return;
+    try {
+      const res = await fetch(`${API_URL}/api/user-types/${t._id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error("Failed to delete user type");
+      setUserTypes(userTypes.filter((_, i) => i !== idx));
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const setField = (name) => (e) => setForm(f => ({ ...f, [name]: e.target.value }));

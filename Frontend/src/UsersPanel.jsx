@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { API_URL } from './config';
 
 const ROLES = ['Gatekeeper', 'Doctor', 'Admin', 'Nurse', 'Receptionist'];
 
@@ -15,13 +16,20 @@ const EMPTY_FORM = {
 };
 
 export default function UsersPanel() {
-  const [users, setUsers] = useState(() =>
-    JSON.parse(localStorage.getItem('medflow_panel_users') || '[]')
-  );
-  
-  const [availableUserTypes] = useState(() =>
-    JSON.parse(localStorage.getItem('medflow_user_types_v1') || '[]')
-  );
+  const [users, setUsers] = useState([]);
+  const [availableUserTypes, setAvailableUserTypes] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/users`)
+      .then(res => res.json())
+      .then(data => setUsers(data))
+      .catch(err => console.error("Failed to fetch users", err));
+
+    fetch(`${API_URL}/api/user-types`)
+      .then(res => res.json())
+      .then(data => setAvailableUserTypes(data))
+      .catch(err => console.error("Failed to fetch user types", err));
+  }, []);
 
 
 
@@ -40,10 +48,7 @@ export default function UsersPanel() {
     catch { return 'System'; }
   })();
 
-  const persist = (list) => {
-    setUsers(list);
-    localStorage.setItem('medflow_panel_users', JSON.stringify(list));
-  };
+  // Persist function removed in favor of API calls
 
   const openAdd = () => {
     setForm({ 
@@ -97,32 +102,56 @@ export default function UsersPanel() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     const timestamp = nowStr();
-    if (formMode === 'add') {
-      persist([{
-        ...form,
-        username: form.username.trim(),
-        photo: photoPreview,
-        createdBy: currentUser,
-        createdOn: timestamp,
-        updatedBy: '', updatedOn: '',
-      }, ...users]);
-    } else {
-      persist(users.map((u, i) =>
-        i === editIndex
-          ? { ...u, ...form, photo: photoPreview, updatedBy: currentUser, updatedOn: timestamp }
-          : u
-      ));
+    try {
+      if (formMode === 'add') {
+        const payload = {
+          ...form,
+          username: form.username.trim(),
+          photo: photoPreview,
+          createdBy: currentUser,
+          createdOn: timestamp,
+          updatedBy: '', updatedOn: '',
+        };
+        const res = await fetch(`${API_URL}/api/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Failed to add user");
+        const saved = await res.json();
+        setUsers([saved, ...users]);
+      } else {
+        const u = users[editIndex];
+        const payload = { ...u, ...form, photo: photoPreview, updatedBy: currentUser, updatedOn: timestamp };
+        const res = await fetch(`${API_URL}/api/users/${u._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Failed to update user");
+        const updated = await res.json();
+        setUsers(users.map((user, i) => i === editIndex ? updated : user));
+      }
+      closeForm();
+    } catch (err) {
+      alert(err.message);
     }
-    closeForm();
   };
 
-  const handleDelete = (idx) => {
-    if (!window.confirm(`Delete user "${users[idx].username}"?`)) return;
-    persist(users.filter((_, i) => i !== idx));
+  const handleDelete = async (idx) => {
+    const u = users[idx];
+    if (!window.confirm(`Delete user "${u.username}"?`)) return;
+    try {
+      const res = await fetch(`${API_URL}/api/users/${u._id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error("Failed to delete user");
+      setUsers(users.filter((_, i) => i !== idx));
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const handlePhoto = (e) => {

@@ -150,7 +150,7 @@ const SessionDetails = ({ currentSession, sessionHistory, activeDuration, onClos
                     </tr>
                   )}
                   {sessionHistory.map((s, idx) => {
-                    const loggedInEmail = s.email || (s.loginId && s.loginId.includes('@') ? s.loginId : 'tamilmalar520d@gmail.com');
+                    const loggedInEmail = s.email || (s.loginId && s.loginId.includes('@') ? s.loginId : 'gshmrd2627@gmail.com');
                     const loggedOutUser = s.email ? s.loginId : (s.loginId && !s.loginId.includes('@') ? s.loginId : 'sadhana');
                     return (
                       <tr key={idx} style={{ transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
